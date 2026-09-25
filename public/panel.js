@@ -152,6 +152,67 @@
         <span class="tw">${x.ts ? new Date(x.ts).toLocaleTimeString(LANG === 'en' ? 'en-GB' : 'fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}</span></li>`).join('')}</ul>`;
   }
 
+  function fmtRemainingTime(targetTs) {
+    if (!targetTs) return '';
+    const diff = targetTs - Date.now();
+    if (diff <= 0) return t('Réinitialisé');
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    const days = Math.floor(hours / 24);
+    const remHours = hours % 24;
+    if (days > 0) return `${t('dans')} ${days}j ${remHours}h`;
+    if (hours > 0) return `${t('dans')} ${hours}h ${remMins}m`;
+    return `${t('dans')} ${remMins}m`;
+  }
+
+  function renderQuotaCards(quotas, updatedAt) {
+    if (!quotas || !quotas.length) {
+      return `<p class="hint">${t('Aucune donnée de quota Antigravity disponible pour le moment.')}</p>`;
+    }
+    return `
+      <div class="quota-grid">
+        ${quotas.map(q => {
+          const rem = q.remainingPercent != null ? q.remainingPercent : 0;
+          const used = q.usedPercent != null ? q.usedPercent : (100 - rem);
+          const colorClass = rem > 50 ? 'quota-good' : (rem >= 20 ? 'quota-warn' : 'quota-crit');
+          const resetDateStr = q.resetTime ? new Date(q.resetTime).toLocaleString(LANG === 'en' ? 'en-GB' : 'fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : (q.resetIso || '');
+          const resetRel = q.resetTime ? fmtRemainingTime(q.resetTime) : '';
+          return `
+            <div class="quota-card ${colorClass}">
+              <div class="quota-card-head">
+                <span class="quota-cat">${esc(q.category)}</span>
+                <span class="quota-limit-name">${esc(q.limitName)}</span>
+              </div>
+              <div class="quota-bar-wrap">
+                <div class="quota-bar">
+                  <div class="quota-bar-fill" style="width: ${rem}%"></div>
+                </div>
+              </div>
+              <div class="quota-stats-row">
+                <div class="quota-stat">
+                  <span class="quota-label">${t('Restant')}</span>
+                  <span class="quota-val-rem">${rem}%</span>
+                </div>
+                <div class="quota-stat">
+                  <span class="quota-label">${t('Utilisé')}</span>
+                  <span class="quota-val-used">${used}%</span>
+                </div>
+                <div class="quota-stat reset">
+                  <span class="quota-label">${t('Réinitialisation')}</span>
+                  <span class="quota-val-reset" title="${esc(resetDateStr)}">${resetRel ? `<b>${resetRel}</b>` : ''} <small>(${esc(resetDateStr)})</small></span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ${updatedAt ? `<div class="quota-foot-hint"><small>${t('Dernière mise à jour')} : ${new Date(updatedAt).toLocaleTimeString()}</small></div>` : ''}
+    `;
+  }
+  F.renderQuotaCards = renderQuotaCards;
+  F.fmtRemainingTime = fmtRemainingTime;
+
   // ---------------------------------------------------------------- Consommation
   async function loadUsage() {
     const el = $('#tab-usage');
@@ -161,7 +222,19 @@
       const row = (label, u) => `<tr><td>${label}</td><td>${fmtN(u.in + u.cr + u.cw)}</td><td>${fmtN(u.out)}</td><td>${fmt$(u.cost)}</td></tr>`;
       const days = Object.entries(all.perDay).sort();
       const max = Math.max(1, ...days.map(([, v]) => v));
+
+      const agyQuotaHtml = all.agyQuota?.quotas?.length ? `
+        <div class="usage-agy-quota-box">
+          <div class="usage-head-row">
+            <h3>🔷 ${t('Quotas Antigravity (agy)')}</h3>
+            <button type="button" class="mini-btn" id="btnRefreshTabQuota" title="${t('Actualiser')}">⟳</button>
+          </div>
+          ${renderQuotaCards(all.agyQuota.quotas, all.agyQuota.updatedAt)}
+        </div>
+      ` : '';
+
       el.innerHTML = `
+        ${agyQuotaHtml}
         <h3>${t('Cette session')}</h3>
         ${mine ? `<table class="usage"><tr><th></th><th>${t('Entrée')}</th><th>${t('Sortie')}</th><th>${t('Coût estimé')}</th></tr>
           ${row(t('Total'), mine.total)}
@@ -173,6 +246,21 @@
         <h3>${t('Sessions les plus coûteuses (7 jours)')}</h3>
         <ul class="topUse">${all.top.map(x => `<li><span>${esc(x.name)}</span><b>${fmt$(x.cost)}</b></li>`).join('')}</ul>
         <p class="hint">${t('Coût estimé aux tarifs API publics, à titre indicatif (inclus dans un abonnement Claude). Entrée = tokens lus, cache compris.')}</p>`;
+
+      const refBtn = $('#btnRefreshTabQuota');
+      if (refBtn) {
+        refBtn.onclick = async () => {
+          refBtn.disabled = true;
+          try {
+            await api('GET', '/api/agents/agy/quota?force=true');
+            loadUsage();
+          } catch (e) {
+            toast(e.message, true);
+          } finally {
+            refBtn.disabled = false;
+          }
+        };
+      }
     } catch (e) { el.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
   }
 

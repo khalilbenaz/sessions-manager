@@ -165,4 +165,12 @@ test('dual-agent : exécution simultanée Claude Code & Antigravity', async () =
   const status = await api('GET', '/api/agents/status');
   assert.ok(status.claude);
   assert.ok(status.agy);
+
+  const quota = await api('GET', '/api/agents/agy/quota');
+  assert.ok(quota);
+  assert.ok(Array.isArray(quota.quotas));
+
+  const usage = await api('GET', '/api/usage');
+  assert.ok(usage);
+  assert.ok('agyQuota' in usage);
 });

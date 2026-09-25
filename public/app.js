@@ -687,6 +687,28 @@ window.addEventListener('blur', hideMenu);
 window.addEventListener('resize', hideMenu);
 for (const d of document.querySelectorAll('dialog')) d.addEventListener('close', hideMenu);
 
+async function openQuotaDialog(force = false) {
+  const dlg = $('#dlgQuota');
+  const box = $('#quotaContent');
+  dlg.showModal();
+  if (!force && box.dataset.loaded) return;
+  box.innerHTML = `<p class="hint">${t('Chargement des quotas Antigravity…')}</p>`;
+  try {
+    const res = await api('GET', `/api/agents/agy/quota${force ? '?force=true' : ''}`);
+    if (res.quotas && res.quotas.length) {
+      box.innerHTML = window.csmFeatures?.renderQuotaCards ? window.csmFeatures.renderQuotaCards(res.quotas, res.updatedAt) : `<pre>${JSON.stringify(res.quotas, null, 2)}</pre>`;
+      box.dataset.loaded = '1';
+    } else {
+      box.innerHTML = `<p class="hint">${t('Aucun quota retourné par Antigravity CLI.')}${res.error ? '<br><span class="err">' + res.error + '</span>' : ''}</p>`;
+    }
+  } catch (e) {
+    box.innerHTML = `<p class="err">${t('Échec de la récupération des quotas :')} ${e.message}</p>`;
+  }
+}
+$('#btnQuota').onclick = () => openQuotaDialog();
+$('#quotaClose').onclick = () => $('#dlgQuota').close();
+$('#btnRefreshQuota').onclick = () => openQuotaDialog(true);
+
 $('#btnRestart').onclick = () => active && api('POST', `/api/sessions/${active}/restart`);
 function openItems(id) {
   return [

@@ -59,6 +59,7 @@
       <button data-layout="2r" class="icon" title="Deux lignes">⊟</button>
       <button data-layout="4" class="icon" title="Grille 2×2">⊞</button>
     </span>
+    <button id="btnQuota" title="Afficher les quotas et limites Antigravity CLI">📊 Quota</button>
     <button id="btnChanges" title="Fichiers modifiés par la session (Ctrl+Alt+G)">± <span id="changesCount">Modifications</span></button>
     <button id="btnOpen" title="Ouvrir le dossier dans…">↗ Ouvrir</button>
     <button id="btnAttach" class="icon" title="Joindre une image ou un fichier (ou glisser-déposer / coller dans le terminal)">📎</button>
@@ -197,6 +198,18 @@
       <button value="cancel">Fermer</button>
     </menu>
   </form>
+</dialog>
+
+<dialog id="dlgQuota" class="wide quota-dialog">
+  <div class="histHead">
+    <h2>🔷 Quotas &amp; Limites Antigravity</h2>
+    <span class="spacer"></span>
+    <button type="button" id="btnRefreshQuota" class="icon" title="Actualiser les quotas">⟳</button>
+    <button id="quotaClose" class="icon">✕</button>
+  </div>
+  <div id="quotaContent" class="quota-body">
+    <p class="hint">Chargement des quotas Antigravity…</p>
+  </div>
 </dialog>
 
 <dialog id="dlgBroadcast">
