@@ -74,12 +74,12 @@ footer { border-top: 1px solid var(--line); padding: 26px 20px 40px; color: var(
   </aside>
   <main>
     <h1>Guide de AGY Sessions</h1>
-    <p class="lead">Tout ce que fait l'application et comment s'en servir — version 1.0.1. Le même guide est dans le <a href="https://github.com/khalilbenaz/agy-sessions-manager#readme">README</a>.</p>
+    <p class="lead">Tout ce que fait l'application et comment s'en servir — version 1.0.2. Le même guide est dans le <a href="https://github.com/khalilbenaz/agy-sessions-manager#readme">README</a>.</p>
 <section id="g1-installation"><h2><span class="num">1</span>Installation</h2>
 <p>Prérequis : au moins l'un des deux agents installé :</p>
 <ul><li><b>Claude Code CLI</b> (<code>claude</code>) : <code>npm install -g @anthropic-ai/claude-code</code> (ou via <code>sm install-claude</code>)</li><li><b>Antigravity CLI</b> (<code>agy</code>) : installé via <code>curl -fsSL https://antigravity.google/cli/install.sh | bash</code></li></ul>
 <h3>Application de bureau (Electron)</h3>
-<div class="tablebox"><table><thead><tr><th>Système</th><th>Fichier (<a href="https://github.com/khalilbenaz/sessions-manager/releases/latest" target="_blank" rel="noopener">Releases GitHub</a>)</th><th>Installation</th></tr></thead><tbody><tr><td>Windows 10 / 11</td><td><code>Sessions-Manager-Setup-x.y.z.exe</code></td><td>Double-clic ; installation en un clic sans droits admin</td></tr><tr><td>macOS Apple Silicon (M1…M4)</td><td><code>Sessions-Manager-x.y.z-arm64.dmg</code></td><td>Ouvrir, glisser <b>Sessions Manager</b> dans Applications</td></tr><tr><td>macOS Intel</td><td><code>Sessions-Manager-x.y.z-x64.dmg</code></td><td>Idem</td></tr></tbody></table></div>
+<div class="tablebox"><table><thead><tr><th>Système</th><th>Fichier (<a href="https://github.com/khalilbenaz/sessions-manager/releases/latest" target="_blank" rel="noopener">Releases GitHub</a>)</th><th>Installation</th></tr></thead><tbody><tr><td>Windows 10 / 11</td><td><code>Sessions-Manager-Setup-x.y.z.exe</code></td><td>Double-clic ; installation en un clic sans droits admin</td></tr><tr><td>macOS Apple Silicon (M1…M4)</td><td><code>Sessions-Manager-x.y.z-arm64.dmg</code></td><td>Ouvrir, glisser <b>Sessions Manager</b> dans Applications</td></tr><tr><td>macOS Intel</td><td><code>Sessions-Manager-x.y.z-x64.dmg</code></td><td>Idem</td></tr><tr><td>Ubuntu / Debian (x64)</td><td><code>Sessions-Manager-x.y.z-amd64.deb</code></td><td><code>sudo dpkg -i Sessions-Manager-*.deb</code></td></tr><tr><td>Linux universel (x64)</td><td><code>Sessions-Manager-x.y.z-x86_64.AppImage</code></td><td><code>chmod +x Sessions-Manager-*.AppImage &amp;&amp; ./Sessions-Manager-*.AppImage</code></td></tr></tbody></table></div>
 <h3>Via npm (CLI universelle)</h3>
 <pre class="cli">git clone https://github.com/khalilbenaz/sessions-manager.git
 cd sessions-manager

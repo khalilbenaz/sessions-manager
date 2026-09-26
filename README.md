@@ -1,6 +1,6 @@
 # Sessions Manager
 
-Une seule application pour piloter **Claude Code** (`claude`) et **Antigravity CLI** (`agy`) côte à côte dans une interface fluide, productive et unifiée. **Windows et macOS · libre (MIT).**
+Une seule application pour piloter **Claude Code** (`claude`) et **Antigravity CLI** (`agy`) côte à côte dans une interface fluide, productive et unifiée. **Windows, macOS et Linux / Ubuntu · libre (MIT).**
 
 **Site web et documentation : [khalilbenaz.github.io/sessions-manager](https://khalilbenaz.github.io/sessions-manager/)** · [Portail Sessions](https://khalilbenaz.github.io/sessions/) · [Journal des versions](CHANGELOG.md)
 
@@ -53,6 +53,8 @@ Prérequis : au moins l'un des deux agents installé :
 | Windows 10 / 11 | `Sessions-Manager-Setup-x.y.z.exe` | Double-clic ; installation en un clic sans droits admin |
 | macOS Apple Silicon (M1…M4) | `Sessions-Manager-x.y.z-arm64.dmg` | Ouvrir, glisser **Sessions Manager** dans Applications |
 | macOS Intel | `Sessions-Manager-x.y.z-x64.dmg` | Idem |
+| Ubuntu / Debian (x64) | `Sessions-Manager-x.y.z-amd64.deb` | `sudo dpkg -i Sessions-Manager-*.deb` |
+| Linux universel (x64) | `Sessions-Manager-x.y.z-x86_64.AppImage` | `chmod +x Sessions-Manager-*.AppImage && ./Sessions-Manager-*.AppImage` |
 
 ### Via npm (CLI universelle)
 

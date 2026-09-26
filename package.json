@@ -1,6 +1,6 @@
 {
   "name": "sessions-manager",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Une fenêtre pour piloter plusieurs sessions Claude Code et Antigravity CLI en parallèle : sessions persistantes, état en direct, historique, reprise automatique.",
   "bin": {
     "sm": "bin/sm.js",
@@ -24,6 +24,7 @@
     "app": "electron .",
     "dist:win": "electron-builder --win --x64",
     "dist:mac": "electron-builder --mac --arm64 --x64",
+    "dist:linux": "electron-builder --linux AppImage deb --x64",
     "test": "node --test --test-concurrency=1 test/server.test.js",
     "test:app": "node --test --test-concurrency=1 test/app.test.js",
     "guide": "node scripts/build-guide.js",
@@ -43,7 +44,10 @@
     "ai-agent",
     "workspace"
   ],
-  "author": "Khalil Benazzouz",
+  "author": {
+    "name": "Khalil Benazzouz",
+    "email": "khalilbenaz@users.noreply.github.com"
+  },
   "license": "MIT",
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
@@ -123,6 +127,23 @@
     },
     "dmg": {
       "title": "Sessions Manager ${version}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "Khalil Benazzouz <khalilbenaz@users.noreply.github.com>",
+      "icon": "build/icon.png",
+      "category": "Development",
+      "artifactName": "Sessions-Manager-${version}-${arch}.${ext}"
+    },
+    "deb": {
+      "synopsis": "Sessions Manager — Claude Code & Antigravity CLI",
+      "description": "Une fenêtre unifiée pour piloter plusieurs sessions Claude Code et Antigravity CLI en parallèle."
+    },
+    "appImage": {
+      "artifactName": "Sessions-Manager-${version}-${arch}.${ext}"
     },
     "publish": [
       {
