@@ -445,7 +445,9 @@ function renderBar() {
   const badgeEl = $('#curAgentBadge');
   if (badgeEl) {
     badgeEl.className = `agent-badge ${isAgy ? 'badge-agy' : 'badge-claude'}`;
-    badgeEl.textContent = isAgy ? '🔷 Antigravity' : '🧡 Claude Code';
+    badgeEl.textContent = isAgy ? '🔷 AGY' : '🧡 Claude';
+    badgeEl.title = `${t('Agent actif')} : ${isAgy ? 'Antigravity CLI' : 'Claude Code'} (${MOD}+Alt+S pour basculer)`;
+    badgeEl.onclick = () => switchAgent(s.id);
   }
   const modelEl = $('#curModelBadge');
   if (modelEl) {
@@ -461,11 +463,11 @@ function renderBar() {
   $('#curMsg').className = `msg ${s.status}`;
   $('#btnKill').disabled = !s.alive;
   $('#btnRestart').textContent = s.alive ? t('Relancer') : (s.conversationId || s.claudeSessionId ? t('Reprendre') : t('Relancer'));
-  // Bouton de bascule : toujours visible, il annonce la cible et son raccourci.
+  // Bouton de bascule : compact, annonce la cible et son raccourci.
   const sw = $('#btnSwitch'), swL = $('#btnSwitchLabel');
   if (sw && swL) {
     const to = isAgy ? 'claude' : 'agy';
-    swL.textContent = t('Basculer vers') + ' ' + AGENT_LABEL[to];
+    swL.textContent = to === 'claude' ? 'Claude' : 'AGY';
     sw.title = `${t('Basculer vers')} ${AGENT_LABEL[to]} — ${t('le contexte est transmis')} (${MOD}+Alt+S)`;
     sw.classList.toggle('to-claude', to === 'claude');
     sw.classList.toggle('to-agy', to === 'agy');

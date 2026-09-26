@@ -44,7 +44,10 @@
     try { gitState = await api('GET', `/api/sessions/${id}/git`); } catch (e) { gitState = { error: e.message }; }
     if (id !== active) return;
     const n = gitState?.files?.length || 0;
-    $('#changesCount').textContent = gitState?.repo ? (n ? `${n} ${t(n > 1 ? 'modifications' : 'modification')}` : t('Aucune modification')) : t('Modifications');
+    $('#changesCount').textContent = gitState?.repo ? (n ? `${n}` : '0') : t('Modifs');
+    $('#btnChanges').title = gitState?.repo
+      ? (n ? `${n} ${t(n > 1 ? 'fichiers modifiés' : 'fichier modifié')} (Ctrl+Alt+G)` : `${t('Aucune modification')} (Ctrl+Alt+G)`)
+      : `${t('Modifications')} (Ctrl+Alt+G)`;
     $('#btnChanges').classList.toggle('has', n > 0);
     if (open && tab === 'changes') renderChanges();
   }
