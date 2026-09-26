@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide — AGY Sessions</title>
+<meta name="description" content="Guide complet de AGY Sessions : sessions, groupes, vue partagée, worktrees git, verrouillage, notifications, réglages, raccourcis.">
+<link rel="icon" href="icon.svg">
+<meta name="theme-color" content="#12161f">
+<!-- Généré par scripts/build-guide.js à partir du README : ne pas modifier à la main. -->
+<style>
+:root { --bg: #10141d; --panel: #171d2a; --panel2: #1f2738; --line: #2b364c; --fg: #e8ecf4; --dim: #8fa0ba; --accent: #00d2b4; --mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace; }
+@media (prefers-color-scheme: light) { :root { --bg: #f6f8fb; --panel: #ffffff; --panel2: #edf2f7; --line: #d8e2ec; --fg: #151d28; --dim: #5a6b82; --accent: #009982; } }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.65 -apple-system, "Segoe UI", system-ui, sans-serif; }
+a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+header { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+header .in { max-width: 1180px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 16px; height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--fg); }
+.brand img { width: 28px; height: 28px; }
+header nav { margin-left: auto; display: flex; gap: 18px; font-size: 14px; }
+header nav a { color: var(--dim); } header nav a.on, header nav a:hover { color: var(--fg); text-decoration: none; }
+.layout { max-width: 1180px; margin: 0 auto; padding: 0 20px; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 40px; overflow-x: clip; }
+aside.toc { position: sticky; top: 76px; align-self: start; max-height: calc(100vh - 90px); overflow-y: auto; padding: 24px 0; font-size: 14px; }
+aside.toc b { display: block; color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+aside.toc a { display: flex; gap: 8px; padding: 4px 8px; border-radius: 6px; color: var(--dim); }
+aside.toc a span { min-width: 18px; text-align: right; opacity: .7; }
+aside.toc a:hover, aside.toc a.on { background: var(--panel2); color: var(--fg); text-decoration: none; }
+main { padding: 28px 0 80px; min-width: 0; }
+h1 { font-size: clamp(28px, 4vw, 38px); margin: 0 0 6px; letter-spacing: -.02em; }
+.lead { color: var(--dim); margin: 0 0 28px; }
+section { padding-top: 22px; border-top: 1px solid var(--line); margin-top: 26px; }
+section:first-of-type { border-top: none; margin-top: 0; }
+h2 { font-size: 24px; margin: 0 0 12px; display: flex; align-items: center; gap: 12px; }
+h2 .num { display: inline-grid; place-items: center; min-width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #0a1c17; font-size: 15px; font-weight: bold; }
+h3 { font-size: 18px; margin: 22px 0 8px; }
+p, li { color: color-mix(in srgb, var(--fg) 88%, var(--dim)); overflow-wrap: anywhere; }
+td { overflow-wrap: anywhere; }
+ul, ol { padding-left: 22px; } li { margin: 4px 0; }
+code, kbd { font-family: var(--mono); font-size: .86em; background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+kbd { border-bottom-width: 2px; }
+.tablebox { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; margin: 12px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+th { color: var(--dim); font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+pre { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font: 13px/1.5 var(--mono); }
+pre.cli { background: #0c0f16; color: #d6d9df; }
+pre.schema { background: var(--panel); color: var(--fg); font-size: 12.5px; line-height: 1.35; }
+.note { background: var(--panel2); border-left: 3px solid var(--accent); border-radius: 6px; padding: 10px 14px; font-size: 14px; }
+footer { border-top: 1px solid var(--line); padding: 26px 20px 40px; color: var(--dim); font-size: 14px; text-align: center; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } aside.toc { display: none; } header nav { gap: 12px; } }
+@media (max-width: 520px) { header nav a:not(.keep) { display: none; } }
+</style>
+</head>
+<body>
+<header><div class="in">
+  <a class="brand" href="./"><img src="icon.svg" alt=""> AGY Sessions</a>
+  <nav><a href="./">Accueil</a><a class="on keep" href="guide.html">Guide</a><a href="./#telecharger">Télécharger</a><a href="https://github.com/khalilbenaz/agy-sessions-manager" class="keep">GitHub</a></nav>
+</div></header>
+<div class="layout">
+  <aside class="toc"><b>Sommaire</b>
+    <a href="#g1-installation"><span>1</span>Installation</a>
+    <a href="#g2-premiers-pas"><span>2</span>Premiers pas</a>
+    <a href="#g3-lecran-principal-la-barre-de-session"><span>3</span>L'écran principal &amp; la barre de session</a>
+    <a href="#g4-gestion-des-sessions-bascule-dagent-handoff"><span>4</span>Gestion des sessions &amp; bascule d'agent (Handoff)</a>
+    <a href="#g5-quotas-consommation-en-temps-reel"><span>5</span>Quotas &amp; Consommation en temps réel</a>
+    <a href="#g6-vue-partagee-split-view-1-2-4-panneaux"><span>6</span>Vue partagée (Split View 1, 2, 4 panneaux)</a>
+    <a href="#g7-panneau-lateral-modifications-git-chronologie"><span>7</span>Panneau latéral : Modifications Git &amp; Chronologie</a>
+    <a href="#g8-historique-unifie-claude-code-antigravity"><span>8</span>Historique unifié (Claude Code &amp; Antigravity)</a>
+    <a href="#g9-ligne-de-commande-sm"><span>9</span>Ligne de commande sm</a>
+    <a href="#g10-raccourcis-clavier-essentiels"><span>10</span>Raccourcis clavier essentiels</a>
+  </aside>
+  <main>
+    <h1>Guide de AGY Sessions</h1>
+    <p class="lead">Tout ce que fait l'application et comment s'en servir — version 1.0.0. Le même guide est dans le <a href="https://github.com/khalilbenaz/agy-sessions-manager#readme">README</a>.</p>
+<section id="g1-installation"><h2><span class="num">1</span>Installation</h2>
+<p>Prérequis : au moins l'un des deux agents installé :</p>
+<ul><li><b>Claude Code CLI</b> (<code>claude</code>) : <code>npm install -g @anthropic-ai/claude-code</code> (ou via <code>sm install-claude</code>)</li><li><b>Antigravity CLI</b> (<code>agy</code>) : installé via <code>curl -fsSL https://antigravity.google/cli/install.sh | bash</code></li></ul>
+<h3>Application de bureau (Electron)</h3>
+<div class="tablebox"><table><thead><tr><th>Système</th><th>Fichier (<a href="https://github.com/khalilbenaz/sessions-manager/releases/latest" target="_blank" rel="noopener">Releases GitHub</a>)</th><th>Installation</th></tr></thead><tbody><tr><td>Windows 10 / 11</td><td><code>Sessions-Manager-Setup-x.y.z.exe</code></td><td>Double-clic ; installation en un clic sans droits admin</td></tr><tr><td>macOS Apple Silicon (M1…M4)</td><td><code>Sessions-Manager-x.y.z-arm64.dmg</code></td><td>Ouvrir, glisser <b>Sessions Manager</b> dans Applications</td></tr><tr><td>macOS Intel</td><td><code>Sessions-Manager-x.y.z-x64.dmg</code></td><td>Idem</td></tr></tbody></table></div>
+<h3>Via npm (CLI universelle)</h3>
+<pre class="cli">git clone https://github.com/khalilbenaz/sessions-manager.git
+cd sessions-manager
+npm install
+npm link
+sm install    # Configure le démarrage auto et ouvre l'interface</pre>
+</section>
+<section id="g2-premiers-pas"><h2><span class="num">2</span>Premiers pas</h2>
+<ol><li>Lancez <b>Sessions Manager</b> (ou tapez <code>sm</code> dans un terminal).</li><li>Cliquez sur <b>+ Nouvelle</b> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> ou <kbd>⌥</kbd>+<kbd>⌃</kbd>+<kbd>N</kbd>) :</li></ol>
+<p>   - Choisissez l'agent souhaité en un clic : <b>🧡 Claude Code</b> ou <b>🔷 Antigravity</b>.</p>
+<p>   - Choisissez votre dossier de travail (<i>Parcourir…</i>).</p>
+<p>   - Les options de modèle et d'effort s'adaptent instantanément à l'agent sélectionné.</p>
+<p>   - Cliquez sur <b>Lancer</b>.</p>
+<ol><li>Vos sessions tournent en parallèle dans la même fenêtre, avec un indicateur clair de leur agent (<code>🧡 Claude</code> ou <code>🔷 AGY</code>).</li></ol>
+</section>
+<section id="g3-lecran-principal-la-barre-de-session"><h2><span class="num">3</span>L'écran principal &amp; la barre de session</h2>
+<pre class="schema">┌─ barre latérale ────────┬─ barre de la session active ────────────────────────────────────────────────────────┐
+│ + Nouvelle              │ ● 🧡 Claude  Projet Web ✎  [gemini-3.1-pro ▾]  ⎇ main  dossier   📊 Quota   ± Modifs │
+│ Rechercher…   Ctrl+K    │                                                      🔀 Basculer   Reprendre  ⋯  ✕ │
+│ [Tous] [🧡 Claude] [🔷] │├──────────────────────────────────────────────────────────────┬─────────────────────┤
+│ ─ ÉPINGLÉES ─       1   │                                                              │ panneau latéral     │
+│ ● 🧡 Backend API        │   terminal de la session (ou 2 / 4 panneaux)                 │  Modifications      │
+│ ─ FRONTEND ─        2   │                                                              │  Chronologie        │
+│ ● 🔷 Refactor UI (AGY)  │                                                              │  Consommation       │
+│ ● 🧡 Tests Playwright   │                                                              │                     │
+│ Historique   ⚙   ⇤      │                                                              │                     │
+└─────────────────────────┴──────────────────────────────────────────────────────────────┴─────────────────────┘</pre>
+<ul><li><b>Filtres de la barre latérale</b> : filtrez vos sessions actives d'un clic avec <code>[ Tous ]</code>, <code>[ 🧡 Claude ]</code> ou <code>[ 🔷 AGY ]</code>.</li><li><b>Badges d'agent</b> : chaque élément affiche un badge visuel net pour ne jamais confondre vos agents.</li><li><b>Affichage du modèle en inline</b> : visualisez en permanence le modèle en cours d'exécution dans la barre supérieure. Un clic dessus (ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>) ouvre un menu pour changer de modèle et de niveau d'effort à la volée.</li><li><b>Barre supérieure</b> : indique l'agent en cours d'exécution, le modèle, la branche git (si worktree) et l'état en temps réel.</li></ul>
+</section>
+<section id="g4-gestion-des-sessions-bascule-dagent-handoff"><h2><span class="num">4</span>Gestion des sessions &amp; bascule d'agent (Handoff)</h2>
+<h3>États en temps réel</h3>
+<ul><li>🟠 <b>Orange (pulsant)</b> : l'agent réfléchit, génère du code ou exécute un outil.</li><li>🔴 <b>Rouge (alerte)</b> : l'agent attend une validation ou une réponse de votre part.</li><li>🟢 <b>Vert</b> : l'agent est prêt.</li><li>⚪ <b>Cercle</b> : session arrêtée. Cliquez sur « Reprendre » pour reprendre la conversation.</li></ul>
+<h3>Bascule d'agent transparente (Handoff Claude ⇄ Antigravity)</h3>
+<ul><li>Cliquez sur le bouton <b>🔀 Basculer vers...</b> (ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd>) pour passer instantanément d'un agent à l'autre dans la même session.</li><li><b>Transmission intelligente du contexte</b> : Sessions Manager génère automatiquement un briefing Markdown complet résumant les tours précédents, les décisions prises et les fichiers touchés.</li><li><b>Reprise sans collision</b> : si vous revenez à un agent déjà utilisé dans la session, sa conversation historique est reprise proprement et complétée avec le briefing du tour intermédiaire.</li><li><b>Isolation étanche</b> : les processus PTY et les hooks universels reçoivent la variable <code>SM_AGENT</code> pour garantir qu'aucun identifiant de conversation n'est croisé ou corrompu.</li></ul>
+</section>
+<section id="g5-quotas-consommation-en-temps-reel"><h2><span class="num">5</span>Quotas &amp; Consommation en temps réel</h2>
+<p>Sessions Manager surveille vos quotas et consommations sur les deux fournisseurs :</p>
+<ul><li><b>Bouton 📊 Quota</b> (barre d'en-tête) : ouvre une modale détaillée avec les jauges d'utilisation, le pourcentage restant et la date de réinitialisation. Le quota de l'agent actif est mis en avant en premier.</li><li><b>Onglet Consommation</b> (panneau latéral droit) :</li></ul>
+<p>  - Affiche automatiquement en tête les <b>Quotas Claude Code</b> ou les <b>Quotas Antigravity</b> selon l'agent de la session sélectionnée.</p>
+<p>  - Boutons de rafraîchissement individuels <code>⟳</code> pour forcer l'actualisation sans attendre le cache.</p>
+<p>  - Statistiques de tokens d'entrée, de sortie et coût estimé par modèle et par jour.</p>
+</section>
+<section id="g6-vue-partagee-split-view-1-2-4-panneaux"><h2><span class="num">6</span>Vue partagée (Split View 1, 2, 4 panneaux)</h2>
+<p>Affichez plusieurs terminaux simultanément :</p>
+<ul><li><b>▢ 1 panneau</b> : plein écran sur la session active.</li><li><b>◫ 2 colonnes</b> : deux sessions côte à côte (ex. Claude sur l'API, AGY sur le frontend).</li><li><b>⊟ 2 lignes</b> : vue haute et basse.</li><li><b>⊞ Grille 2×2</b> : 4 sessions simultanées.</li></ul>
+</section>
+<section id="g7-panneau-lateral-modifications-git-chronologie"><h2><span class="num">7</span>Panneau latéral : Modifications Git &amp; Chronologie</h2>
+<ul><li><b>Modifications Git (±)</b> : visualisez en temps réel les fichiers ajoutés, modifiés ou supprimés dans le dossier de travail. Affichez les diffs en un clic, annulez un fichier ou committez avec message assisté.</li><li><b>Chronologie</b> : historique visuel de toutes les actions et invocations d'outils effectuées par l'agent (lecture de fichiers, commandes shell, requêtes web, etc.).</li><li><b>Worktrees Git dédiés</b> : lancez une session sur un worktree git isolé pour expérimenter sans toucher à votre branche principale.</li></ul>
+</section>
+<section id="g8-historique-unifie-claude-code-antigravity"><h2><span class="num">8</span>Historique unifié (Claude Code &amp; Antigravity)</h2>
+<p>Appuyez sur <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> :</p>
+<ul><li>Accédez à l'historique complet de vos conversations Claude Code (<code>~/.claude/projects</code>) et Antigravity (<code>~/.gemini/antigravity-cli/brain</code> &amp; <code>history.jsonl</code>).</li><li>Filtrez par agent avec <code>[ Tous ]</code>, <code>[ 🧡 Claude ]</code>, <code>[ 🔷 AGY ]</code>.</li><li>Cliquez sur n'importe quelle session passée : elle est reprise immédiatement avec le bon agent !</li></ul>
+</section>
+<section id="g9-ligne-de-commande-sm"><h2><span class="num">9</span>Ligne de commande <code>sm</code></h2>
+<div class="tablebox"><table><thead><tr><th>Commande</th><th>Action</th></tr></thead><tbody><tr><td><code>sm</code></td><td>Ouvre l'interface de bureau (lance le serveur si besoin)</td></tr><tr><td><code>sm status</code></td><td>Affiche l'état du serveur et la détection des deux CLIs</td></tr><tr><td><code>sm install</code></td><td>Configure le lancement automatique au démarrage</td></tr><tr><td><code>sm uninstall</code></td><td>Retire le lancement automatique</td></tr><tr><td><code>sm install-claude</code></td><td>Installe / met à jour Claude Code via npm</td></tr><tr><td><code>sm update-agy</code></td><td>Recherche et applique la mise à jour d'Antigravity CLI</td></tr><tr><td><code>sm restart</code></td><td>Redémarre le serveur local</td></tr><tr><td><code>sm stop</code></td><td>Arrête le serveur (les sessions seront restaurées au prochain lancement)</td></tr><tr><td><code>sm log</code></td><td>Affiche les dernières lignes du journal serveur</td></tr></tbody></table></div>
+</section>
+<section id="g10-raccourcis-clavier-essentiels"><h2><span class="num">10</span>Raccourcis clavier essentiels</h2>
+<div class="tablebox"><table><thead><tr><th>Raccourci</th><th>Action</th></tr></thead><tbody><tr><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd></td><td>Nouvelle session</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd></td><td>Basculer vers l'autre agent (Claude ⇄ Antigravity)</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd></td><td>Changer le modèle ou l'effort de réflexion</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>Palette de commandes universelle</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd></td><td>Historique des conversations</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd></td><td>Panneau Git Modifications</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd></td><td>Renommer la session</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>,</kbd></td><td>Ouvrir les Réglages</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>1..9</kbd></td><td>Sélection directe d'une session</td></tr></tbody></table></div>
+<p><i>(Sur macOS, <kbd>Ctrl</kbd>+<kbd>Alt</kbd> s'utilise également avec <kbd>⌥</kbd>+<kbd>⌃</kbd>).</i></p>
+</section>
+  </main>
+</div>
+<footer>© 2026 Khalil Benazzouz · <a href="https://github.com/khalilbenaz/agy-sessions-manager/blob/main/LICENSE">Licence MIT</a> · <a href="privacy.html">Confidentialité</a> · <a href="https://github.com/khalilbenaz/agy-sessions-manager/issues">Signaler un problème</a></footer>
+<script>
+// Section courante surlignée dans le sommaire.
+const links = [...document.querySelectorAll('aside.toc a')];
+const io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) links.forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id)); }, { rootMargin: '-80px 0px -70% 0px' });
+document.querySelectorAll('main section').forEach(s => io.observe(s));
+</script>
+</body>
+</html>

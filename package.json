@@ -26,7 +26,8 @@
     "dist:mac": "electron-builder --mac --arm64 --x64",
     "test": "node --test --test-concurrency=1 test/server.test.js",
     "test:app": "node --test --test-concurrency=1 test/app.test.js",
-    "guide": "node scripts/build-guide.js"
+    "guide": "node scripts/build-guide.js",
+    "build": "node scripts/build-guide.js"
   },
   "engines": {
     "node": ">=18"

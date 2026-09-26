@@ -12,6 +12,9 @@ Une seule application pour piloter **Claude Code** (`claude`) et **Antigravity C
 |---|:---:|:---:|:---:|
 | **Claude Code CLI** (`claude`) | ✅ | ❌ | **✅ Oui** |
 | **Antigravity CLI** (`agy`) | ❌ | ✅ | **✅ Oui** |
+| **Bascule d'agent en direct (Handoff)** | ❌ | ❌ | **✅ Oui (briefing Markdown & reprise auto)** |
+| **Modèle affiché en inline & sélecteur** | ❌ | ❌ | **✅ Oui (dans la barre d'en-tête)** |
+| **Quotas en direct Claude & AGY** | Claude seul | AGY seul | **✅ Oui (synchronisés avec l'agent actif)** |
 | **Sélecteur d'agent par session** | ❌ | ❌ | **✅ Oui (`[ 🧡 Claude ]` / `[ 🔷 AGY ]`)** |
 | **Filtrage dans la barre latérale** | ❌ | ❌ | **✅ Oui (`Tous`, `Claude`, `AGY`)** |
 | **Historique croisé et reprise auto** | Claude seul | AGY seul | **✅ Unifié (détection automatique de l'agent)** |
@@ -26,21 +29,14 @@ Une seule application pour piloter **Claude Code** (`claude`) et **Antigravity C
 
 1. [Installation](#1-installation)
 2. [Premiers pas](#2-premiers-pas)
-3. [L'écran principal & le filtrage multi-agents](#3-lécran-principal--le-filtrage-multi-agents)
-4. [Gestion des sessions & choix de l'agent](#4-gestion-des-sessions--choix-de-lagent)
-5. [Ranger : groupes, épinglage, couleurs](#5-ranger--groupes-épinglage-couleurs)
+3. [L'écran principal & la barre de session](#3-lécran-principal--la-barre-de-session)
+4. [Gestion des sessions & bascule d'agent (Handoff)](#4-gestion-des-sessions--bascule-dagent-handoff)
+5. [Quotas & Consommation en temps réel](#5-quotas--consommation-en-temps-réel)
 6. [Vue partagée (Split View 1, 2, 4 panneaux)](#6-vue-partagée-split-view-1-2-4-panneaux)
-7. [Worktrees git : plusieurs sessions sans conflit](#7-worktrees-git--plusieurs-sessions-sans-conflit)
-8. [Panneau Modifications, Chronologie, Consommation](#8-panneau-modifications-chronologie-consommation)
-9. [Historique unifié (Claude Code & Antigravity)](#9-historique-unifié-claude-code--antigravity)
-10. [Images, captures d'écran et fichiers](#10-images-captures-décran-et-fichiers)
-11. [Palette, prompts, file d'attente, envoi groupé](#11-palette-prompts-file-dattente-envoi-groupé)
-12. [Modèles de session](#12-modèles-de-session)
-13. [Verrouiller une session par mot de passe](#13-verrouiller-une-session-par-mot-de-passe)
-14. [Notifications, zone de notification, arrière-plan](#14-notifications-zone-de-notification-arrière-plan)
-15. [Réglages & gestion des CLIs](#15-réglages--gestion-des-clis)
-16. [Raccourcis clavier](#16-raccourcis-clavier)
-17. [Ligne de commande `sm`](#17-ligne-de-commande-sm)
+7. [Panneau latéral : Modifications Git & Chronologie](#7-panneau-latéral--modifications-git--chronologie)
+8. [Historique unifié (Claude Code & Antigravity)](#8-historique-unifié-claude-code--antigravity)
+9. [Ligne de commande `sm`](#9-ligne-de-commande-sm)
+10. [Raccourcis clavier essentiels](#10-raccourcis-clavier-essentiels)
 
 ---
 
@@ -82,29 +78,30 @@ sm install    # Configure le démarrage auto et ouvre l'interface
 
 ---
 
-## 3. L'écran principal & le filtrage multi-agents
+## 3. L'écran principal & la barre de session
 
 ```
-┌─ barre latérale ────────┬─ barre de la session active ────────────────────────────────────────┐
-│ + Nouvelle              │ ● 🧡 Claude  Projet Web ✎  ⎇ main  dossier  état   ▢◫⊟⊞  ± Modifs   │
-│ Rechercher…   Ctrl+K    │                                         Joindre  Reprendre  ⋯  ✕     │
-│ [Tous] [🧡 Claude] [🔷] │├──────────────────────────────────────────────────┬──────────────────┤
-│ ─ ÉPINGLÉES ─       1   │                                                  │ panneau latéral  │
-│ ● 🧡 Backend API        │   terminal de la session (ou 2 / 4 panneaux)     │  Modifications   │
-│ ─ FRONTEND ─        2   │                                                  │  Chronologie     │
-│ ● 🔷 Refactor UI (AGY)  │                                                  │  Consommation    │
-│ ● 🧡 Tests Playwright   │                                                  │                  │
-│ Historique   ⚙   ⇤      │                                                  │                  │
-└─────────────────────────┴──────────────────────────────────────────────────┴──────────────────┘
+┌─ barre latérale ────────┬─ barre de la session active ────────────────────────────────────────────────────────┐
+│ + Nouvelle              │ ● 🧡 Claude  Projet Web ✎  [gemini-3.1-pro ▾]  ⎇ main  dossier   📊 Quota   ± Modifs │
+│ Rechercher…   Ctrl+K    │                                                      🔀 Basculer   Reprendre  ⋯  ✕ │
+│ [Tous] [🧡 Claude] [🔷] │├──────────────────────────────────────────────────────────────┬─────────────────────┤
+│ ─ ÉPINGLÉES ─       1   │                                                              │ panneau latéral     │
+│ ● 🧡 Backend API        │   terminal de la session (ou 2 / 4 panneaux)                 │  Modifications      │
+│ ─ FRONTEND ─        2   │                                                              │  Chronologie        │
+│ ● 🔷 Refactor UI (AGY)  │                                                              │  Consommation       │
+│ ● 🧡 Tests Playwright   │                                                              │                     │
+│ Historique   ⚙   ⇤      │                                                              │                     │
+└─────────────────────────┴──────────────────────────────────────────────────────────────┴─────────────────────┘
 ```
 
 - **Filtres de la barre latérale** : filtrez vos sessions actives d'un clic avec `[ Tous ]`, `[ 🧡 Claude ]` ou `[ 🔷 AGY ]`.
 - **Badges d'agent** : chaque élément affiche un badge visuel net pour ne jamais confondre vos agents.
-- **Barre supérieure** : indique l'agent en cours d'exécution, la branche git (si worktree) et l'état en temps réel.
+- **Affichage du modèle en inline** : visualisez en permanence le modèle en cours d'exécution dans la barre supérieure. Un clic dessus (ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>) ouvre un menu pour changer de modèle et de niveau d'effort à la volée.
+- **Barre supérieure** : indique l'agent en cours d'exécution, le modèle, la branche git (si worktree) et l'état en temps réel.
 
 ---
 
-## 4. Gestion des sessions & choix de l'agent
+## 4. Gestion des sessions & bascule d'agent (Handoff)
 
 ### États en temps réel
 - 🟠 **Orange (pulsant)** : l'agent réfléchit, génère du code ou exécute un outil.
@@ -112,14 +109,26 @@ sm install    # Configure le démarrage auto et ouvre l'interface
 - 🟢 **Vert** : l'agent est prêt.
 - ⚪ **Cercle** : session arrêtée. Cliquez sur « Reprendre » pour reprendre la conversation.
 
-### Cycle de vie & hooks universels
-- Les événements Claude Code sont gérés via injection automatique de `--settings hooks-settings.json`.
-- Les événements Antigravity CLI sont gérés via le hook runner officiel dans `~/.gemini/config/hooks.json`.
-- Aucune collision de configuration, même si les deux agents tournent simultanément.
+### Bascule d'agent transparente (Handoff Claude ⇄ Antigravity)
+- Cliquez sur le bouton **🔀 Basculer vers...** (ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd>) pour passer instantanément d'un agent à l'autre dans la même session.
+- **Transmission intelligente du contexte** : Sessions Manager génère automatiquement un briefing Markdown complet résumant les tours précédents, les décisions prises et les fichiers touchés.
+- **Reprise sans collision** : si vous revenez à un agent déjà utilisé dans la session, sa conversation historique est reprise proprement et complétée avec le briefing du tour intermédiaire.
+- **Isolation étanche** : les processus PTY et les hooks universels reçoivent la variable `SM_AGENT` pour garantir qu'aucun identifiant de conversation n'est croisé ou corrompu.
 
 ---
 
-## 5. Vue partagée (Split View)
+## 5. Quotas & Consommation en temps réel
+
+Sessions Manager surveille vos quotas et consommations sur les deux fournisseurs :
+- **Bouton 📊 Quota** (barre d'en-tête) : ouvre une modale détaillée avec les jauges d'utilisation, le pourcentage restant et la date de réinitialisation. Le quota de l'agent actif est mis en avant en premier.
+- **Onglet Consommation** (panneau latéral droit) :
+  - Affiche automatiquement en tête les **Quotas Claude Code** ou les **Quotas Antigravity** selon l'agent de la session sélectionnée.
+  - Boutons de rafraîchissement individuels `⟳` pour forcer l'actualisation sans attendre le cache.
+  - Statistiques de tokens d'entrée, de sortie et coût estimé par modèle et par jour.
+
+---
+
+## 6. Vue partagée (Split View 1, 2, 4 panneaux)
 
 Affichez plusieurs terminaux simultanément :
 - **▢ 1 panneau** : plein écran sur la session active.
@@ -129,7 +138,15 @@ Affichez plusieurs terminaux simultanément :
 
 ---
 
-## 6. Historique unifié
+## 7. Panneau latéral : Modifications Git & Chronologie
+
+- **Modifications Git (±)** : visualisez en temps réel les fichiers ajoutés, modifiés ou supprimés dans le dossier de travail. Affichez les diffs en un clic, annulez un fichier ou committez avec message assisté.
+- **Chronologie** : historique visuel de toutes les actions et invocations d'outils effectuées par l'agent (lecture de fichiers, commandes shell, requêtes web, etc.).
+- **Worktrees Git dédiés** : lancez une session sur un worktree git isolé pour expérimenter sans toucher à votre branche principale.
+
+---
+
+## 8. Historique unifié (Claude Code & Antigravity)
 
 Appuyez sur <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> :
 - Accédez à l'historique complet de vos conversations Claude Code (`~/.claude/projects`) et Antigravity (`~/.gemini/antigravity-cli/brain` & `history.jsonl`).
@@ -138,7 +155,7 @@ Appuyez sur <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> :
 
 ---
 
-## 7. Ligne de commande `sm`
+## 9. Ligne de commande `sm`
 
 | Commande | Action |
 |---|---|
@@ -154,17 +171,21 @@ Appuyez sur <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> :
 
 ---
 
-## 8. Raccourcis clavier essentiels
+## 10. Raccourcis clavier essentiels
 
 | Raccourci | Action |
 |---|---|
 | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> | Nouvelle session |
+| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> | Basculer vers l'autre agent (Claude ⇄ Antigravity) |
+| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> | Changer le modèle ou l'effort de réflexion |
 | <kbd>Ctrl</kbd>+<kbd>K</kbd> | Palette de commandes universelle |
 | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> | Historique des conversations |
 | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd> | Panneau Git Modifications |
 | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd> | Renommer la session |
 | <kbd>Ctrl</kbd>+<kbd>,</kbd> | Ouvrir les Réglages |
 | <kbd>Ctrl</kbd>+<kbd>1..9</kbd> | Sélection directe d'une session |
+
+*(Sur macOS, <kbd>Ctrl</kbd>+<kbd>Alt</kbd> s'utilise également avec <kbd>⌥</kbd>+<kbd>⌃</kbd>).*
 
 ---
 
