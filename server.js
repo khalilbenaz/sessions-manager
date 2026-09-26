@@ -878,6 +878,15 @@ const server = http.createServer(async (req, res) => {
       renameSession(s, name);
       return json(res, 200, publicView(s));
     }
+    if (s && m[2] === 'model' && req.method === 'POST') {
+      const body = await readBody(req);
+      const newModel = fitModel(s.agent, body && body.model);
+      s.model = newModel;
+      s.agentCfg = { ...(s.agentCfg || {}), [s.agent]: { ...(s.agentCfg?.[s.agent] || {}), model: newModel } };
+      persist();
+      broadcast({ t: 'session', s: publicView(s) });
+      return json(res, 200, publicView(s));
+    }
     if (s && m[2] === 'kill' && req.method === 'POST') { s.wantRun = false; persist(); killSession(s); return json(res, 200, {}); }
     if (s && m[2] === 'restart' && req.method === 'POST') {
       killSession(s);

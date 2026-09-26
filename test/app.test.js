@@ -53,6 +53,8 @@ test('créer une session depuis l’interface et échanger', async () => {
   await win.fill('#formNew [name=name]', 'e2e');
   await win.click('#formNew button[value=ok]');
   await win.waitForFunction(() => [...sessions.values()].some(s => s.name === 'e2e' && s.status === 'idle'), null, { timeout: 60000 });
+  const modelText = await win.textContent('#curModelBadge');
+  assert.ok(modelText && modelText.length > 0, 'le modèle en cours s’affiche en inline');
   await win.click('.term.show');
   await win.keyboard.type('bonjour e2e');
   await win.keyboard.press('Enter');

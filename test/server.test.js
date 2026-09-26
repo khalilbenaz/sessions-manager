@@ -245,3 +245,12 @@ test('bascule d’agent : le contexte est transmis dans les deux sens', async ()
   assert.equal(bad.status, 400);
   c.ws.close();
 });
+
+test('mise à jour du modèle d’une session', async () => {
+  const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'model-test', agent: 'agy' });
+  assert.equal(s.model, '');
+  const updated = await api('POST', `/api/sessions/${s.id}/model`, { model: 'gemini-3.1-pro-high' });
+  assert.equal(updated.model, 'gemini-3.1-pro-high');
+  const cur = await session(s.id);
+  assert.equal(cur.model, 'gemini-3.1-pro-high');
+});

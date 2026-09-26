@@ -447,6 +447,13 @@ function renderBar() {
     badgeEl.className = `agent-badge ${isAgy ? 'badge-agy' : 'badge-claude'}`;
     badgeEl.textContent = isAgy ? '🔷 Antigravity' : '🧡 Claude Code';
   }
+  const modelEl = $('#curModelBadge');
+  if (modelEl) {
+    const modelLabel = formatModelLabel(s.agent, s.model, s.effort);
+    modelEl.textContent = modelLabel;
+    modelEl.title = `${t('Modèle actif')} : ${modelLabel}\n${t('Cliquer pour changer de modèle')}`;
+    modelEl.dataset.agent = s.agent;
+  }
   $('#curName').textContent = s.name;
   $('#curCwd').textContent = s.cwd;
   $('#curCwd').title = s.cwd + (s.conversationId || s.claudeSessionId ? `\nsession ${s.conversationId || s.claudeSessionId}` : '');
@@ -515,6 +522,16 @@ async function renameSession(id) {
 function startRename() { if (active) renameSession(active); }
 $('#curName').ondblclick = startRename;
 $('#btnRename').onclick = startRename;
+$('#curModelBadge').onclick = e => {
+  e.stopPropagation();
+  if (active) pickSessionModel(active, $('#curModelBadge'));
+};
+$('#curModelBadge').onkeydown = e => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    if (active) pickSessionModel(active, $('#curModelBadge'));
+  }
+};
 
 // ------------------------------------------------------------------ menu clic droit
 // Menu propre à l'application partout : le menu du navigateur n'apparaît jamais.
@@ -663,6 +680,7 @@ function sessionItems(id) {
   const to = s.agent === 'agy' ? 'claude' : 'agy';
   return [
     ['Renommer', () => renameSession(id), { kbd: id === active ? `${MOD}+Alt+R` : '' }],
+    [t('Changer de modèle…'), () => pickSessionModel(id)],
     [s.alive ? 'Relancer' : 'Reprendre', () => api('POST', `/api/sessions/${id}/restart`)],
     [t('Arrêter'), () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
     [t('Ouvrir dans…'), () => showMenu(openItems(id), ...lastMenuPos)],
@@ -961,6 +979,86 @@ const AGENT_MODES = {
     { value: 'dangerously-skip-permissions', label: 'Approbation auto (skip permissions)' },
   ]
 };
+
+function formatModelLabel(agent, model, effort) {
+  const isAgy = agent === 'agy';
+  const m = String(model || '').trim();
+  const eff = String(effort || '').trim();
+
+  if (!m) {
+    if (isAgy) return eff ? `Gemini 3.8 Flash (${eff})` : 'Gemini 3.8 Flash';
+    return eff ? `Claude Sonnet (${eff})` : 'Claude Sonnet';
+  }
+
+  const list = isAgy ? [...agyModels, ...(AGENT_MODELS.agy || [])] : (AGENT_MODELS.claude || []);
+  const found = list.find(x => x.value === m);
+  if (found && found.label && found.value) {
+    let lbl = found.label.replace(/\s*\(alias\s*—.*?\)/i, '').replace(/\s*\(Recommandé\)/i, '').trim();
+    if (eff && !/\((high|medium|low|thinking)\)/i.test(lbl)) {
+      lbl += ` (${eff})`;
+    }
+    return lbl;
+  }
+
+  if (m === 'sonnet') return eff ? `Claude Sonnet (${eff})` : 'Claude Sonnet';
+  if (m === 'opus') return eff ? `Claude Opus (${eff})` : 'Claude Opus';
+  if (m === 'haiku') return eff ? `Claude Haiku (${eff})` : 'Claude Haiku';
+  if (m === 'fable') return eff ? `Claude Fable (${eff})` : 'Claude Fable';
+
+  const pretty = m
+    .replace(/^gemini-(\d+\.\d+)-(flash|pro)(?:-(medium|high|low))?$/i, (_, v, type, e) => {
+      const ef = e || eff;
+      return `Gemini ${v} ${type.charAt(0).toUpperCase() + type.slice(1)}${ef ? ` (${ef.charAt(0).toUpperCase() + ef.slice(1)})` : ''}`;
+    })
+    .replace(/^claude-(\w+)-(\d+)-(\d+)$/i, (_, name, v1, v2) => `Claude ${name.charAt(0).toUpperCase() + name.slice(1)} ${v1}.${v2}`)
+    .replace(/^gpt-oss-([0-9a-z]+)(?:-(medium|high|low))?$/i, (_, name, e) => `GPT-OSS ${name.toUpperCase()}`);
+
+  return pretty || m;
+}
+
+function pickSessionModel(id, triggerEl) {
+  const s = sessions.get(id);
+  if (!s) return;
+  const isAgy = s.agent === 'agy';
+  const list = (isAgy && agyModels.length ? agyModels : AGENT_MODELS[s.agent]) || [];
+  const curModel = s.model || '';
+
+  const items = list.map(m => {
+    const isCur = m.value === curModel || (!m.value && !curModel);
+    const label = m.label || m.value || (isAgy ? t('Défaut Antigravity') : t('Défaut Claude'));
+    return [
+      (isCur ? '✓ ' : '   ') + label,
+      () => setSessionModel(id, m.value)
+    ];
+  });
+
+  if (triggerEl) {
+    const r = triggerEl.getBoundingClientRect();
+    showMenu(items, r.left, r.bottom + 4);
+  } else {
+    showMenu(items, ...lastMenuPos);
+  }
+}
+
+async function setSessionModel(id, newModel) {
+  const s = sessions.get(id);
+  if (!s) return;
+  const label = formatModelLabel(s.agent, newModel, s.effort);
+  try {
+    await api('POST', `/api/sessions/${id}/model`, { model: newModel });
+    s.model = newModel;
+    render();
+    if (id === active) renderBar();
+    toast(`${t('Modèle actif')} : ${label}`);
+    if (s.alive) {
+      if (confirm(`${t('Relancer la session')} pour appliquer immédiatement « ${label} » ?`)) {
+        await api('POST', `/api/sessions/${id}/restart`);
+      }
+    }
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
 
 function syncAgentForm(agent) {
   const f = $('#formNew');
@@ -1378,7 +1476,7 @@ window.csmNative?.onAction(a => {
 
 window.csmFeatures = window.csmFeatures || {}; // rempli par panel.js, settings.js, palette.js
 publishLocale();
-loadSettings().finally(() => { setupFilters(); connect(); setLayout(layout); window.dispatchEvent(new Event('csm:ready')); document.documentElement.dataset.ready = '1'; }); // réglages et langue définitifs (repère pour les tests)
+loadSettings().finally(() => { loadAgyModels(); setupFilters(); connect(); setLayout(layout); window.dispatchEvent(new Event('csm:ready')); document.documentElement.dataset.ready = '1'; }); // réglages et langue définitifs (repère pour les tests)
 
 const UI_VERSION = document.querySelector('meta[name="sm-version"]')?.content || document.querySelector('meta[name="asm-version"]')?.content || document.querySelector('meta[name="csm-version"]')?.content || '';
 async function checkServerVersion() {
