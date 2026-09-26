@@ -805,6 +805,9 @@ const server = http.createServer(async (req, res) => {
         s = [...sessions.values()][0];
       }
       if (!s) return json(res, 404, {});
+      if (hookAgent && hookAgent !== s.agent) {
+        return json(res, 200, { ignored: true });
+      }
       if (convId) {
         const emittingAgent = hookAgent || (s.agent === 'agy' ? 'agy' : 'claude');
         if (emittingAgent === 'agy') {

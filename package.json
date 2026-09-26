@@ -1,6 +1,6 @@
 {
   "name": "sessions-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Une fenêtre pour piloter plusieurs sessions Claude Code et Antigravity CLI en parallèle : sessions persistantes, état en direct, historique, reprise automatique.",
   "bin": {
     "sm": "bin/sm.js",
