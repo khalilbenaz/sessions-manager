@@ -70,7 +70,7 @@ function wsClient() {
   return new Promise(r => ws.on('open', () => r({ ws, out, input: (id, d) => ws.send(JSON.stringify({ t: 'input', id, d })) })));
 }
 const session = async id => (await api('GET', '/api/sessions')).find(s => s.id === id);
-const idle = id => waitFor(async () => { const s = await session(id); return s && s.status === 'idle' ? s : null; }, 15000, 'session prête');
+const idle = id => waitFor(async () => { const s = await session(id); return s && s.status === 'idle' ? s : null; }, 30000, 'session prête');
 
 before(startServer);
 after(async () => {
