@@ -1509,13 +1509,32 @@ async function checkServerVersion() {
   const stale = !server || (expected && server !== expected);
   $('#stale').hidden = !stale;
   if (!stale) return;
-  $('#staleMsg').textContent = `Le serveur tourne ${server ? 'la version ' + server : 'une ancienne version'}${expected ? ' (application : ' + expected + ')' : ''} : certaines fonctions ne marchent pas. Redémarrer le relance avec le bon code ; les sessions ouvertes reviennent toutes seules.`;
-  $('#btnStale').hidden = !native?.restartServer;
-  if (!native) $('#staleMsg').textContent += ' Commande : sm restart';
+
+  const isAppMismatch = native && expected && server && expected !== server;
+  if (isAppMismatch) {
+    $('#staleMsg').textContent = `L’application (${expected}) et le serveur (${server}) n’ont pas la même version. Redémarrer l’application applique la mise à jour.`;
+    $('#btnStale').hidden = false;
+    $('#btnStale').textContent = t('Redémarrer l’application');
+  } else {
+    $('#staleMsg').textContent = `Le serveur tourne ${server ? 'la version ' + server : 'une ancienne version'}${expected ? ' (application : ' + expected + ')' : ''} : certaines fonctions ne marchent pas. Redémarrer le relance avec le bon code ; les sessions ouvertes reviennent toutes seules.`;
+    $('#btnStale').hidden = !native?.restartServer;
+    $('#btnStale').textContent = t('Redémarrer le serveur');
+    if (!native) $('#staleMsg').textContent += ' Commande : sm restart';
+  }
 }
 $('#btnStale').onclick = async () => {
-  $('#btnStale').disabled = true; $('#btnStale').textContent = 'Redémarrage…';
-  const native = window.asmNative || window.csmNative;
+  $('#btnStale').disabled = true; $('#btnStale').textContent = t('Redémarrage…');
+  const native = window.smNative || window.asmNative || window.csmNative;
+  if (native?.relaunchApp) {
+    await native.relaunchApp();
+    return;
+  }
   const ok = await native?.restartServer?.();
-  if (!ok) { $('#btnStale').disabled = false; $('#btnStale').textContent = 'Redémarrer le serveur'; toast('Le serveur ne redémarre pas — voir le journal', true); }
+  if (!ok) {
+    $('#btnStale').disabled = false;
+    $('#btnStale').textContent = t('Redémarrer');
+    toast(t('Le serveur ne redémarre pas — voir le journal'), true);
+  } else {
+    location.reload();
+  }
 };

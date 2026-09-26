@@ -11,6 +11,7 @@ const nativeApi = {
   setPrefs: p => ipcRenderer.send('asm:prefs', { minimizeToTray: !!p.minimizeToTray, closeToTray: !!p.closeToTray }),
   appVersion: () => ipcRenderer.sendSync('asm:app-version'),
   restartServer: () => ipcRenderer.invoke('asm:restart-server'),
+  relaunchApp: () => ipcRenderer.invoke('asm:relaunch-app'),
   update: action => ipcRenderer.invoke('asm:update', ['check', 'install', 'state'].includes(action) ? action : 'state'),
   onUpdate: cb => { const h = (e, st) => cb(st); ipcRenderer.on('asm:update-state', h); return () => ipcRenderer.removeListener('asm:update-state', h); },
   onAction: cb => {

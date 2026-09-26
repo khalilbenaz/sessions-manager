@@ -269,6 +269,15 @@ function registerIpc() {
   };
   ipcMain.handle('asm:restart-server', handleRestart);
   ipcMain.handle('csm:restart-server', handleRestart);
+
+  const handleRelaunch = e => {
+    if (!trusted(e)) return false;
+    app.relaunch();
+    app.exit(0);
+    return true;
+  };
+  ipcMain.handle('asm:relaunch-app', handleRelaunch);
+  ipcMain.handle('csm:relaunch-app', handleRelaunch);
 }
 
 let trayImg = null, trayImgAlert = null;
