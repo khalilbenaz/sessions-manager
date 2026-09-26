@@ -462,7 +462,8 @@ function renderBar() {
   $('#curMsg').textContent = `${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + t(s.message) : ''}`;
   $('#curMsg').className = `msg ${s.status}`;
   $('#btnKill').disabled = !s.alive;
-  $('#btnRestart').textContent = s.alive ? t('Relancer') : (s.conversationId || s.claudeSessionId ? t('Reprendre') : t('Relancer'));
+  $('#btnRestart').textContent = t('Redémarrer');
+  $('#btnRestart').title = s.alive ? t('Redémarrer la session') : t('Redémarrer / reprendre la conversation');
   // Bouton de bascule : compact, annonce la cible et son raccourci.
   const sw = $('#btnSwitch'), swL = $('#btnSwitchLabel');
   if (sw && swL) {
@@ -688,7 +689,7 @@ function sessionItems(id) {
   return [
     ['Renommer', () => renameSession(id), { kbd: id === active ? `${MOD}+Alt+R` : '' }],
     [t('Changer de modèle…'), () => pickSessionModel(id)],
-    [s.alive ? 'Relancer' : 'Reprendre', () => api('POST', `/api/sessions/${id}/restart`)],
+    [t('Redémarrer'), () => api('POST', `/api/sessions/${id}/restart`)],
     [t('Arrêter'), () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
     [t('Ouvrir dans…'), () => showMenu(openItems(id), ...lastMenuPos)],
     [t('Copier le chemin'), () => clip.copy(s.cwd)],
@@ -804,10 +805,9 @@ async function openQuotaDialog(force = false) {
   const dlg = $('#dlgQuota');
   const box = $('#quotaContent');
   dlg.showModal();
-  // Le quota affiché suit l'agent de la session active, l'autre agent reste visible en dessous.
+  // Afficher uniquement l'agent de la session active (claude ou agy)
   const cur = sessions.get(active);
   const main = cur && cur.agent === 'claude' ? 'claude' : 'agy';
-  const other = main === 'agy' ? 'claude' : 'agy';
   if (box.dataset.mainAgent !== main) {
     delete box.dataset.loaded;
   }
@@ -830,11 +830,8 @@ async function openQuotaDialog(force = false) {
   };
   try {
     const q = force ? '?force=true' : '';
-    const [a, b] = await Promise.all([
-      api('GET', `/api/agents/${main}/quota${q}`).catch(e => ({ quotas: [], error: e.message })),
-      api('GET', `/api/agents/${other}/quota${q}`).catch(e => ({ quotas: [], error: e.message }))
-    ]);
-    box.innerHTML = draw(main, a) + '<hr class="quota-sep">' + draw(other, b);
+    const res = await api('GET', `/api/agents/${main}/quota${q}`).catch(e => ({ quotas: [], error: e.message }));
+    box.innerHTML = draw(main, res);
     box.dataset.loaded = '1';
   } catch (e) {
     box.innerHTML = `<p class="err">${t('Échec de la récupération des quotas :')} ${escHtml(e.message)}</p>`;
@@ -864,6 +861,7 @@ function moreItems(id) {
   const s = sessions.get(id); if (!s) return [];
   const to = s.agent === 'agy' ? 'claude' : 'agy';
   return [
+    [t('Redémarrer la session'), () => api('POST', `/api/sessions/${id}/restart`)],
     [tBasculer(s, to), () => switchAgent(id), { kbd: `${MOD}+Alt+S` }],
     [t('Basculer en choisissant le modèle…'), () => switchWithModel(id, to)],
     [t('Aperçu du transfert de contexte…'), () => previewHandoff(id), { disabled: !(s.conversationId || s.claudeSessionId) }],
@@ -964,13 +962,15 @@ const AGENT_MODELS = {
     { value: 'opus', label: 'Opus (alias — dernier Opus)' },
     { value: 'haiku', label: 'Haiku (alias — dernier Haiku)' },
     { value: 'fable', label: 'Fable (alias — dernier Fable)' },
-    { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+    { value: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
     { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+    { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
     { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
   ],
   agy: [
     { value: 'gemini-3.8-flash-medium', label: 'Gemini 3.8 Flash (Recommandé)' },
     { value: 'gemini-3.1-pro-high', label: 'Gemini 3.1 Pro' },
+    { value: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
     { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
     { value: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6' },
     { value: 'gpt-oss-120b-medium', label: 'GPT-OSS 120B' },
@@ -1021,7 +1021,8 @@ function formatModelLabel(agent, model, effort) {
       const ef = e || eff;
       return `Gemini ${v} ${type.charAt(0).toUpperCase() + type.slice(1)}${ef ? ` (${ef.charAt(0).toUpperCase() + ef.slice(1)})` : ''}`;
     })
-    .replace(/^claude-(\w+)-(\d+)-(\d+)$/i, (_, name, v1, v2) => `Claude ${name.charAt(0).toUpperCase() + name.slice(1)} ${v1}.${v2}`)
+    .replace(/^claude-(\w+)-(\d+)[-.](\d+)$/i, (_, name, v1, v2) => `Claude ${name.charAt(0).toUpperCase() + name.slice(1)} ${v1}.${v2}`)
+    .replace(/^opus-(\d+)[-.](\d+)$/i, (_, v1, v2) => `Claude Opus ${v1}.${v2}`)
     .replace(/^gpt-oss-([0-9a-z]+)(?:-(medium|high|low))?$/i, (_, name, e) => `GPT-OSS ${name.toUpperCase()}`);
 
   return pretty || m;
@@ -1043,6 +1044,16 @@ function pickSessionModel(id, triggerEl) {
     ];
   });
 
+  items.push('-', [
+    t('✏️ Autre modèle…'),
+    async () => {
+      const val = await askName(t('Nom du modèle'), curModel, t('Ex: claude-opus-5-5, sonnet, gemini-3.1-pro-high…'));
+      if (val !== null && val.trim()) {
+        setSessionModel(id, val.trim());
+      }
+    }
+  ]);
+
   if (triggerEl) {
     const r = triggerEl.getBoundingClientRect();
     showMenu(items, r.left, r.bottom + 4);
@@ -1062,7 +1073,7 @@ async function setSessionModel(id, newModel) {
     if (id === active) renderBar();
     toast(`${t('Modèle actif')} : ${label}`);
     if (s.alive) {
-      if (confirm(`${t('Relancer la session')} pour appliquer immédiatement « ${label} » ?`)) {
+      if (confirm(`${t('Redémarrer la session')} pour appliquer immédiatement « ${label} » ?`)) {
         await api('POST', `/api/sessions/${id}/restart`);
       }
     }

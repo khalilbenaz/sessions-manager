@@ -211,12 +211,26 @@ main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: r
 #bar .msg.attention { color: var(--warn); }
 #bar .spacer { flex: 1; min-width: 6px; }
 
-@media (max-width: 1150px) {
-  #bar .msg { display: none; }
-  #bar .cwd { max-width: 90px; }
+#bar #btnRestart {
+  flex-shrink: 0;
+  font-weight: 500;
 }
-@media (max-width: 980px) {
+
+@media (max-width: 1250px) {
+  #bar .msg { display: none; }
+  #bar .cwd { max-width: 100px; }
+}
+@media (max-width: 1100px) {
   #bar .cwd { display: none; }
+  #bar .layouts { display: none; }
+  #bar #btnOpen { display: none; }
+}
+@media (max-width: 950px) {
+  #bar #btnChanges { display: none; }
+  #bar .name { max-width: 120px; }
+}
+@media (max-width: 800px) {
+  #bar #curModelBadge { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
 }
 /* ---- zone de travail : panneaux (vue partagée) + panneau latéral */
 #work { flex: 1; display: flex; min-height: 0; }

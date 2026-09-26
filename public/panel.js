@@ -228,12 +228,10 @@
       const max = Math.max(1, ...days.map(([, v]) => v));
 
       const isClaude = sessions.get(active)?.agent === 'claude';
-      const primary = isClaude ? 'claude' : 'agy';
-      const secondary = isClaude ? 'agy' : 'claude';
-      const primaryData = isClaude ? all.claudeQuota : all.agyQuota;
-      const secondaryData = isClaude ? all.agyQuota : all.claudeQuota;
+      const activeAgent = isClaude ? 'claude' : 'agy';
+      const activeData = isClaude ? all.claudeQuota : all.agyQuota;
 
-      const renderAgentBox = (agent, qData, isMain = true) => {
+      const renderAgentBox = (agent, qData) => {
         const isAgy = agent === 'agy';
         const title = isAgy ? `🔷 ${t('Quotas Antigravity (agy)')}` : `🧡 ${t('Quotas Claude Code')}`;
         const refId = isAgy ? 'btnRefreshTabAgyQuota' : 'btnRefreshTabClaudeQuota';
@@ -244,7 +242,7 @@
         return `
           <div class="usage-agy-quota-box" data-quota-agent="${agent}">
             <div class="usage-head-row">
-              <h3 style="${isMain ? '' : 'font-size:12px;opacity:0.8;'}">${title}</h3>
+              <h3>${title}</h3>
               <button type="button" class="mini-btn" id="${refId}" title="${t('Actualiser')}">⟳</button>
             </div>
             ${bodyHtml}
@@ -252,13 +250,10 @@
         `;
       };
 
-      let quotaBoxesHtml = renderAgentBox(primary, primaryData, true);
-      if (secondaryData?.quotas?.length) {
-        quotaBoxesHtml += renderAgentBox(secondary, secondaryData, false);
-      }
+      const quotaBoxHtml = renderAgentBox(activeAgent, activeData);
 
       el.innerHTML = `
-        ${quotaBoxesHtml}
+        ${quotaBoxHtml}
         <h3>${t('Cette session')}</h3>
         ${mine ? `<table class="usage"><tr><th></th><th>${t('Entrée')}</th><th>${t('Sortie')}</th><th>${t('Coût estimé')}</th></tr>
           ${row(t('Total'), mine.total)}
@@ -271,24 +266,20 @@
         <ul class="topUse">${all.top.map(x => `<li><span>${esc(x.name)}</span><b>${fmt$(x.cost)}</b></li>`).join('')}</ul>
         <p class="hint">${t('Coût estimé aux tarifs API publics, à titre indicatif (inclus dans un abonnement Claude). Entrée = tokens lus, cache compris.')}</p>`;
 
-      const attachRefresh = (agent) => {
-        const btn = $(`#btnRefreshTab${agent === 'agy' ? 'Agy' : 'Claude'}Quota`);
-        if (btn) {
-          btn.onclick = async () => {
-            btn.disabled = true;
-            try {
-              await api('GET', `/api/agents/${agent}/quota?force=true`);
-              loadUsage();
-            } catch (e) {
-              toast(e.message, true);
-            } finally {
-              btn.disabled = false;
-            }
-          };
-        }
-      };
-      attachRefresh('agy');
-      attachRefresh('claude');
+      const refBtn = $(`#btnRefreshTab${activeAgent === 'agy' ? 'Agy' : 'Claude'}Quota`);
+      if (refBtn) {
+        refBtn.onclick = async () => {
+          refBtn.disabled = true;
+          try {
+            await api('GET', `/api/agents/${activeAgent}/quota?force=true`);
+            loadUsage();
+          } catch (e) {
+            toast(e.message, true);
+          } finally {
+            refBtn.disabled = false;
+          }
+        };
+      }
     } catch (e) { el.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
   }
 
