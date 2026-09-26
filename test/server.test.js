@@ -203,7 +203,12 @@ test('bascule d’agent : le contexte est transmis dans les deux sens', async ()
   assert.ok(fs.readFileSync(r.brief, 'utf8').includes('fichier-secret.txt'));
   await idle(s.id);
 
-  const after = fs.readFileSync(ENV.SM_PROBE, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+  // Le faux agent écrit sa sonde après un hook asynchrone : on attend réellement.
+  const probes = async () => fs.readFileSync(ENV.SM_PROBE, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+  const after = await waitFor(async () => {
+    const p = await probes();
+    return p.length > before.length ? p : null;
+  }, 10000, 'nouveau processus agent lancé');
   const injected = after[after.length - 1];
   assert.equal(after.length, before.length + 1, 'un nouveau processus agent a été lancé');
   assert.ok(injected.prompt.length > 200, `le briefing est passé en prompt initial (${injected.prompt.length} car.)`);
@@ -228,7 +233,10 @@ test('bascule d’agent : le contexte est transmis dans les deux sens', async ()
   assert.ok(r3.session.conversationId, 'identifiant de conversation agy restauré');
   await idle(s.id);
 
-  const last = fs.readFileSync(ENV.SM_PROBE, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse).pop();
+  const last = (await waitFor(async () => {
+    const p = await probes();
+    return p.some(x => x.resume && /Transfert de contexte/.test(x.prompt)) ? p : null;
+  }, 10000, 'agy relancé sur sa conversation')).pop();
   assert.ok(last.resume, `l’agy a bien été relancé sur sa conversation (${last.resume})`);
   assert.ok(last.prompt.includes('Transfert de contexte'), 'le briefing est réinjecté par-dessus la reprise');
 

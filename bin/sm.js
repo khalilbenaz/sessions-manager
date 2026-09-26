@@ -87,7 +87,12 @@ const MAC_APP = path.join(MAC_APP_DIR, `${APP_NAME}.app`);
 function plistContent() {
   const { exe, args } = serverLaunch();
   const fullArgs = [exe, ...args].map(a => `    <string>${a}</string>`).join('\n');
-  const envPath = `${path.join(os.homedir(), '.local', 'bin')}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin`;
+  // Le dossier de node passe en tête : avec un gestionnaire de versions (fnm/nvm),
+  // le `claude` de ~/.local/bin ou /opt/homebrew peut être une version périmée.
+  const home = os.homedir();
+  const dirs = [path.dirname(exe), path.join(home, '.local', 'bin'), '/opt/homebrew/bin',
+    '/usr/local/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
+  const envPath = [...new Set(dirs)].join(':');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
