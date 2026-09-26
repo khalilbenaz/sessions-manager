@@ -282,6 +282,7 @@
     a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
+  F.download = download;
   // Rendu Markdown minimal (titres, code, listes, gras) pour l'impression — iframe sans script.
   function printMarkdown(title, md) {
     const blocks = md.split(/\n```/);

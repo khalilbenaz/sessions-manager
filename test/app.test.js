@@ -15,9 +15,13 @@ const HOME = path.join(TMP, 'home'), DATA = path.join(TMP, 'data'), WORK = path.
 for (const d of [HOME, DATA, WORK]) fs.mkdirSync(d, { recursive: true });
 fs.writeFileSync(path.join(DATA, 'settings.json'), JSON.stringify({ onboarded: true, lang: 'fr', autoUpdate: false }));
 
+const FAKE = `"${path.join(__dirname, 'fake-agy.js')}"`;
 const env = {
   ...process.env, ASM_PORT: String(PORT), ASM_DATA: DATA, HOME, USERPROFILE: HOME,
-  ASM_HIDE_WINDOW: '1', ASM_AGY: process.execPath, ASM_AGY_ARGS: `"${path.join(__dirname, 'fake-agy.js')}"`,
+  ASM_HIDE_WINDOW: '1',
+  // Les deux agents doivent être factices : l'agent par défaut du formulaire est Claude.
+  SM_CLAUDE: process.execPath, SM_CLAUDE_ARGS: FAKE, ASM_CLAUDE: process.execPath, ASM_CLAUDE_ARGS: FAKE,
+  SM_AGY: process.execPath, SM_AGY_ARGS: FAKE, ASM_AGY: process.execPath, ASM_AGY_ARGS: FAKE,
 };
 for (const k of Object.keys(env)) if (/^(ANTIGRAVITY_|ELECTRON_RUN_AS_NODE)/.test(k)) delete env[k];
 

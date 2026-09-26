@@ -23,6 +23,7 @@ const ENV = {
   SM_CLAUDE: process.execPath, SM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-agy.js')}"`,
   CSM_CLAUDE: process.execPath, CSM_CLAUDE_ARGS: `"${path.join(__dirname, 'fake-agy.js')}"`,
   GIT_AUTHOR_NAME: 'test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@example.com',
+  SM_PROBE: path.join(TMP, 'probe.jsonl'),
 };
 
 let server = null, token = '';
@@ -173,4 +174,66 @@ test('dual-agent : exécution simultanée Claude Code & Antigravity', async () =
   const usage = await api('GET', '/api/usage');
   assert.ok(usage);
   assert.ok('agyQuota' in usage);
+});
+
+test('bascule d’agent : le contexte est transmis dans les deux sens', async () => {
+  // Session Claude Code, deux échanges pour remplir le transcript.
+  const s = await api('POST', '/api/sessions', { cwd: WORK, name: 'switch-test', agent: 'claude', model: 'claude-3-7-sonnet' });
+  await idle(s.id);
+  const c = await wsClient();
+  c.input(s.id, 'premier tour de contexte\r');
+  await waitFor(() => (c.out[s.id] || '').includes('echo: premier tour'), 10000, 'tour 1');
+  c.input(s.id, 'deuxieme tour avec touch fichier-secret.txt\r');
+  await waitFor(() => (c.out[s.id] || '').includes('echo: deuxieme tour'), 10000, 'tour 2');
+  assert.ok(fs.existsSync(path.join(WORK, 'fichier-secret.txt')), 'le faux agent a bien écrit le fichier');
+
+  // Aperçu du briefing avant bascule.
+  const preview = await api('GET', `/api/sessions/${s.id}/handoff`);
+  assert.ok(preview.markdown.includes('Transfert de contexte'));
+  assert.ok(preview.stats.turns >= 4, `le briefing voit les 4 tours (${preview.stats.turns})`);
+  assert.ok(preview.markdown.includes('fichier-secret.txt'), 'le briefing cite le fichier créé');
+
+  // Bascule Claude Code -> Antigravity.
+  const before = fs.readFileSync(ENV.SM_PROBE, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+  const r = await api('POST', `/api/sessions/${s.id}/switch`, { to: 'agy' });
+  assert.equal(r.session.agent, 'agy');
+  assert.equal(r.session.claudeSessionId, null, 'l’identifiant Claude est libéré');
+  assert.ok(r.stats && r.stats.turns >= 4, 'statistiques de transfert remontées');
+  assert.ok(r.brief && fs.existsSync(r.brief), 'briefing écrit sur disque');
+  assert.ok(fs.readFileSync(r.brief, 'utf8').includes('fichier-secret.txt'));
+  await idle(s.id);
+
+  const after = fs.readFileSync(ENV.SM_PROBE, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
+  const injected = after[after.length - 1];
+  assert.equal(after.length, before.length + 1, 'un nouveau processus agent a été lancé');
+  assert.ok(injected.prompt.length > 200, `le briefing est passé en prompt initial (${injected.prompt.length} car.)`);
+  assert.ok(injected.prompt.includes('Transfert de contexte'), 'le prompt initial est bien le briefing');
+  assert.ok(injected.prompt.includes('fichier-secret.txt'), 'le contexte du tour précédent est présent');
+  assert.ok(/premier tour de contexte/.test(injected.prompt), 'les objectifs initiaux sont repris');
+
+  // Retour Antigravity -> Claude Code : la conversation de l'agent cible est reprise.
+  const r2 = await api('POST', `/api/sessions/${s.id}/switch`, { to: 'claude' });
+  assert.equal(r2.session.agent, 'claude');
+  assert.ok(r2.session.conversationId === null, 'pas de conversation Claude antérieure à reprendre');
+  assert.equal(r2.session.switches.length, 2, 'les deux bascules sont journalisées');
+  assert.equal(r2.session.switches[0].from, 'claude');
+  assert.equal(r2.session.switches[1].to, 'claude');
+  await idle(s.id);
+
+  // Troisième bascule : cette fois la conversation agy existe et doit être reprise.
+  const r3 = await api('POST', `/api/sessions/${s.id}/switch`, { to: 'agy' });
+  assert.equal(r3.session.agent, 'agy');
+  assert.equal(r3.session.switches.length, 3);
+  assert.equal(r3.session.switches[2].resumed, true, 'la conversation agy précédente est reprise');
+  assert.ok(r3.session.conversationId, 'identifiant de conversation agy restauré');
+  await idle(s.id);
+
+  const last = fs.readFileSync(ENV.SM_PROBE, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse).pop();
+  assert.ok(last.resume, `l’agy a bien été relancé sur sa conversation (${last.resume})`);
+  assert.ok(last.prompt.includes('Transfert de contexte'), 'le briefing est réinjecté par-dessus la reprise');
+
+  // Refus de rebasculer sur le même agent.
+  const bad = await req('POST', `/api/sessions/${s.id}/switch`, { to: 'agy' });
+  assert.equal(bad.status, 400);
+  c.ws.close();
 });

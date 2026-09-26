@@ -47,6 +47,8 @@
     ];
     if (s) a.push(
       ['✎', `${t('Renommer')} « ${s.name} »`, () => renameSession(s.id), `${MOD}+Alt+R`],
+      ['🔀', `${t('Basculer vers')} ${AGENT_LABEL[s.agent === 'agy' ? 'claude' : 'agy']}`, () => switchAgent(s.id), `${MOD}+Alt+S`],
+      ['📤', t('Aperçu du transfert de contexte'), () => previewHandoff(s.id)],
       ['↗', t('Ouvrir dans l’éditeur'), () => openIn(s.id, 'editor'), `${MOD}+Alt+E`],
       ['📁', IS_MAC ? t('Ouvrir dans le Finder') : t('Ouvrir dans l’Explorateur'), () => openIn(s.id, 'folder')],
       ['⌨', t('Ouvrir un terminal ici'), () => openIn(s.id, 'terminal')],

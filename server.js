@@ -14,6 +14,7 @@ const {
   CLAUDE_DIR, CLAUDE_HISTORY_FILE, CLAUDE_PROJECTS_DIR,
   BRAIN_DIR, AGY_HISTORY_FILE, GEMINI_CONFIG_DIR
 } = require('./lib/config');
+const handoff = require('./lib/handoff');
 
 const HOST = '127.0.0.1';
 const VERSION = require('./package.json').version;
@@ -134,7 +135,7 @@ function writeCustomTitle(id, title) {
   return ok;
 }
 
-const EXTRA_FIELDS = ['agent', 'group', 'pinned', 'color', 'worktree', 'queue', 'alerts', 'model', 'mode', 'effort'];
+const EXTRA_FIELDS = ['agent', 'group', 'pinned', 'color', 'worktree', 'queue', 'alerts', 'model', 'mode', 'effort', 'agentIds', 'agentCfg', 'switches'];
 const extra = s => Object.fromEntries(EXTRA_FIELDS.filter(k => s[k] !== undefined).map(k => [k, s[k]]));
 
 function persist() {
@@ -224,6 +225,9 @@ function spawnSession(s, { resume, fork } = {}) {
   let explicitEffort = s.effort || '';
   let explicitMode = s.mode || '';
   const extraArgs = [];
+  // Premier prompt (briefing de bascule d'agent ou prompt de création) : injecté une seule fois,
+  // pour ne pas le rejouer lors des redémarrages ultérieurs de la session.
+  const firstPrompt = s.initialPrompt || '';
 
   const splitUserArgs = splitArgs(s.args || '');
   for (let i = 0; i < splitUserArgs.length; i++) {
@@ -244,6 +248,8 @@ function spawnSession(s, { resume, fork } = {}) {
     const rawArgs = splitArgs(process.env.SM_AGY_ARGS || process.env.ASM_AGY_ARGS || '');
     args.push(...rawArgs);
     if (resume) args.push('--conversation', resume);
+    // `--prompt-interactive` : injecte le briefing de transfert puis laisse la session ouverte.
+    if (firstPrompt) args.push('--prompt-interactive', firstPrompt);
 
     let m = String(explicitModel || '').trim();
     let eff = String(explicitEffort || '').trim();
@@ -285,6 +291,8 @@ function spawnSession(s, { resume, fork } = {}) {
     if (explicitModel) args.push('--model', explicitModel);
     if (explicitEffort) args.push('--effort', explicitEffort);
     if (explicitMode === 'dangerously-skip-permissions') args.push('--dangerously-skip-permissions');
+    // Prompt positionnel : Claude démarre en interactif sur ce message (reprise comprise).
+    if (firstPrompt) args.push(firstPrompt);
   }
 
   args.push(...extraArgs);
@@ -322,6 +330,7 @@ function spawnSession(s, { resume, fork } = {}) {
   }
 
   s.pty = p;
+  if (firstPrompt) s.initialPrompt = '';
   if (s.wantRun !== true) { s.wantRun = true; persist(); }
   setStatus(s, 'starting');
 
@@ -378,6 +387,76 @@ function createSession({ name, cwd, args, resume, model, mode, effort, agent, ..
 
 function killSession(s) {
   if (s.pty) { try { s.pty.kill(); } catch { } }
+}
+
+// ------------------------------------------------- bascule d'agent dans une même session
+// `claude` et `agy` n'échangent pas leurs conversations : le contexte est reconstruit
+// depuis le transcript (briefing Markdown) puis injecté comme premier prompt de l'agent
+// cible. Si cette session a déjà utilisé l'agent cible, on reprend sa conversation :
+// les deux historiques s'accumulent alors au fil des allers-retours.
+function agentDefaults(agent) {
+  const st = ctx.getSettings?.() || {};
+  return {
+    model: agent === 'claude' ? '' : (st.defaultModel || ''),
+    effort: agent === 'claude' ? '' : (st.defaultEffort || ''),
+    mode: st.defaultMode || '',
+  };
+}
+
+/** Un modèle Gemini / gpt-oss n'a pas de sens pour `claude`. */
+function fitModel(agent, model) {
+  const m = String(model || '').trim();
+  if (agent !== 'claude') return m;
+  if (/^(gemini|gpt-oss)/.test(m)) return '';
+  return m;
+}
+
+function switchAgent(s, to) {
+  const from = s.agent === 'agy' ? 'agy' : 'claude';
+  const srcId = s.conversationId || s.claudeSessionId || null;
+  if (srcId) s.agentIds = { ...(s.agentIds || {}), [from]: srcId };
+  s.agentCfg = { ...(s.agentCfg || {}), [from]: { model: s.model || '', effort: s.effort || '', mode: s.mode || '' } };
+
+  // --- Briefing de contexte
+  const file = handoff.transcriptFile(from, srcId);
+  let brief = null, briefPath = null, stats = null;
+  if (file) {
+    const built = handoff.buildBriefing({ file, from, to, sessionName: s.name, cwd: s.cwd });
+    if (built) {
+      try {
+        const dir = path.join(DATA, 'handoffs');
+        fs.mkdirSync(dir, { recursive: true });
+        briefPath = path.join(dir, `${s.id}-${Date.now()}.md`);
+        fs.writeFileSync(briefPath, built.markdown);
+        brief = built.markdown;
+        stats = built.stats;
+      } catch { }
+    }
+  }
+
+  // --- Configuration propre à l'agent cible
+  const targetId = (s.agentIds || {})[to] || null;
+  const cfg = s.agentCfg?.[to] || agentDefaults(to);
+  s.agent = to;
+  s.model = fitModel(to, cfg.model);
+  s.effort = to === 'claude' ? '' : (cfg.effort || '');
+  s.mode = to === 'claude' ? (cfg.mode === 'dangerously-skip-permissions' ? cfg.mode : '') : (cfg.mode || '');
+  s.conversationId = to === 'agy' ? targetId : null;
+  s.claudeSessionId = to === 'claude' ? targetId : null;
+  s.initialPrompt = brief || '';
+
+  killSession(s);
+  s.buf = '';
+  broadcast({ t: 'clear', id: s.id });
+  s.buf += `\x1b[90m[sm] Bascule ${handoff.AGENT_LABEL[from]} → ${handoff.AGENT_LABEL[to]}`
+    + `${targetId ? ' (reprise de la conversation)' : ''}`
+    + `${brief ? ` · contexte transmis (${stats.chars} car., ${stats.turns} tours)` : ' · aucun historique à transmettre'}`
+    + `${briefPath ? ` · ${briefPath}` : ''}\x1b[0m\r\n`;
+  spawnSession(s, { resume: targetId || undefined });
+  s.switches = [...(s.switches || []), { from, to, at: Date.now(), chars: stats ? stats.chars : 0, turns: stats ? stats.turns : 0, resumed: !!targetId }].slice(-20);
+  persist();
+  broadcast({ t: 'session', s: publicView(s) });
+  return { session: s, brief: briefPath, stats };
 }
 
 let shuttingDown = false;
@@ -715,9 +794,11 @@ const server = http.createServer(async (req, res) => {
       if (convId) {
         if (s.agent === 'agy' && s.conversationId !== convId) {
           s.conversationId = convId;
+          s.agentIds = { ...(s.agentIds || {}), agy: convId };
           persist();
         } else if (s.agent !== 'agy' && s.claudeSessionId !== convId) {
           s.claudeSessionId = convId;
+          s.agentIds = { ...(s.agentIds || {}), claude: convId };
           persist();
         }
       }
@@ -812,6 +893,23 @@ const server = http.createServer(async (req, res) => {
     if (s && m[2] === 'seen' && req.method === 'POST') {
       if (s.status === 'idle' && s.message === 'terminé') setStatus(s, 'idle', '');
       return json(res, 200, {});
+    }
+    if (s && m[2] === 'switch' && req.method === 'POST') {
+      const { to } = await readBody(req);
+      if (to !== 'claude' && to !== 'agy') return json(res, 400, { error: 'agent cible inconnu (claude|agy)' });
+      if (to === s.agent) return json(res, 400, { error: 'la session utilise déjà cet agent' });
+      const r = switchAgent(s, to);
+      return json(res, 200, { session: publicView(s), brief: r.brief, stats: r.stats });
+    }
+    if (s && m[2] === 'handoff' && req.method === 'GET') {
+      const file = handoff.transcriptFile(s.agent, s.conversationId || s.claudeSessionId || s.id);
+      if (!file) return json(res, 404, { error: 'aucun transcript' });
+      const built = handoff.buildBriefing({
+        file, from: s.agent, to: s.agent === 'agy' ? 'claude' : 'agy', sessionName: s.name, cwd: s.cwd,
+      });
+      if (!built) return json(res, 404, { error: 'transcript vide' });
+      json(res, 200, { markdown: built.markdown, stats: built.stats });
+      return;
     }
     for (const r of ROUTES) {
       if (r.method !== req.method) continue;

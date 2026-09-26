@@ -397,6 +397,23 @@ ul.results li > div .tag { align-self: flex-start; margin-left: 0; }
   color: #60a5fa;
 }
 
+/* Le badge d'agent est cliquable : il bascule la session vers l'autre CLI. */
+li .agent-badge {
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+li .agent-badge:hover {
+  filter: brightness(1.25);
+  transform: scale(1.06);
+}
+li .agent-badge.switching {
+  animation: badgePulse 0.7s ease-in-out infinite alternate;
+}
+@keyframes badgePulse {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
+}
+
 .agent-status-card {
   background: var(--panel);
   border: 1px solid var(--line);

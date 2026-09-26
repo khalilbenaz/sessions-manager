@@ -2,6 +2,8 @@
 const $ = s => document.querySelector(s);
 const TOKEN = document.querySelector('meta[name="sm-token"]')?.content || document.querySelector('meta[name="asm-token"]')?.content || document.querySelector('meta[name="csm-token"]')?.content || '';
 const IS_MAC = /Mac/i.test(navigator.platform || navigator.userAgent);
+/** Vrai pour ⌘+Alt sur macOS, Ctrl+Alt ailleurs. */
+const isModAlt = e => (IS_MAC ? e.metaKey : e.ctrlKey) && e.altKey;
 const LS = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } } };
 
 const sessions = new Map(); // id -> public view
@@ -96,7 +98,7 @@ function ensureTerm(id) {
   }, true); // phase de capture : avant le gestionnaire de xterm, qui ne garderait que le texte
   term.attachCustomKeyEventHandler(e => {
     if (e.type !== 'keydown') return true;
-    if (e.ctrlKey && e.altKey && globalShortcut(e)) return false;
+    if (isModAlt(e) && globalShortcut(e)) return false;
     // Windows : Ctrl+C avec sélection = copier ; Ctrl+V = coller (texte) via le presse-papiers du navigateur.
     // macOS : Cmd+C / Cmd+V sont natifs ; Ctrl+C et Ctrl+V restent à Claude (interrompre, coller une image).
     if (!IS_MAC && e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'c' && term.hasSelection()) {
@@ -394,8 +396,9 @@ function render() {
     li.dataset.id = s.id;
     li.title = `${s.name}\n${s.cwd}${s.worktree ? `\n⎇ ${s.worktree.branch}` : ''}\n${STATUS_LABEL[s.status] || s.status}${s.message ? ' — ' + t(s.message) : ''}`;
     const isAgy = s.agent === 'agy';
-    const badgeHtml = `<span class="agent-badge ${isAgy ? 'badge-agy' : 'badge-claude'}">${isAgy ? '🔷 AGY' : '🧡 Claude'}</span>`;
+    const badgeHtml = `<span class="agent-badge ${isAgy ? 'badge-agy' : 'badge-claude'}${s.switching ? ' switching' : ''}" title="Basculer vers ${isAgy ? 'Claude Code' : 'Antigravity CLI'} (${MOD}+Alt+S)">${isAgy ? '🔷 AGY' : '🧡 Claude'}</span>`;
     li.innerHTML = `<span class="dot ${s.status}"></span><span class="n"></span>${badgeHtml}<span class="acts"><button class="ren" title="Renommer">✎</button><span class="k">${i < 9 ? i + 1 : ''}${unread.has(s.id) && s.id !== active ? ' •' : ''}</span></span><span class="sub"></span>`;
+    li.querySelector('.agent-badge').onclick = e => { e.stopPropagation(); switchAgent(s.id); };
     li.querySelector('.n').textContent = (s.locked ? (window.csmFeatures.isLockedHere?.(s.id) ? '🔒 ' : '🔓 ') : '') + s.name;
     li.querySelector('.dot').textContent = '';
     li.querySelector('.dot').dataset.initial = (s.name || '?').trim().charAt(0).toUpperCase();
@@ -594,24 +597,77 @@ window.addEventListener('drop', e => {
   if (active && !e.target.closest('.term')) attachFiles(active, [...e.dataTransfer.files]);
 });
 
+const AGENT_LABEL = { claude: 'Claude Code', agy: 'Antigravity CLI' };
+
+/**
+ * Bascule la session vers l'autre agent en transmettant le contexte.
+ * Le serveur reconstruit un briefing depuis le transcript courant, le reprend comme
+ * premier prompt de l'agent cible et, si cette session avait déjà utilisé cet agent,
+ * reprend aussi sa conversation précédente : les deux historiques s'accumulent.
+ */
+async function switchAgent(id) {
+  const s = sessions.get(id); if (!s) return;
+  if (s.switching) return;
+  const to = s.agent === 'agy' ? 'claude' : 'agy';
+  const prev = s.agent;
+  sessions.set(id, { ...s, agent: to, switching: true });
+  render(); if (id === active) renderBar();
+  try {
+    const r = await api('POST', `/api/sessions/${id}/switch`, { to });
+    sessions.set(id, { ...sessions.get(id), ...(r && r.session), switching: false });
+    render(); if (id === active) renderBar();
+    const st = r && r.stats;
+    toast(st
+      ? `${AGENT_LABEL[prev]} → ${AGENT_LABEL[to]} · ${st.turns} tours transmis (${Math.round(st.chars / 100) / 10}k car.)`
+      : `${AGENT_LABEL[prev]} → ${AGENT_LABEL[to]} · aucun historique à transmettre`);
+  } catch (e) {
+    sessions.set(id, { ...sessions.get(id), agent: prev, switching: false });
+    render(); if (id === active) renderBar();
+    toast(`${t('Bascule impossible')} : ${e.message}`, true);
+  }
+}
+
+const tBasculer = (s, to) => t('Basculer vers ') + AGENT_LABEL[to]
+  + (s.switches?.length ? ` (${s.switches.length}×)` : '');
+
 function sessionItems(id) {
   const s = sessions.get(id); if (!s) return [];
+  const to = s.agent === 'agy' ? 'claude' : 'agy';
   return [
     ['Renommer', () => renameSession(id), { kbd: id === active ? `${MOD}+Alt+R` : '' }],
     [s.alive ? 'Relancer' : 'Reprendre', () => api('POST', `/api/sessions/${id}/restart`)],
-    ['Arrêter', () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
+    [t('Arrêter'), () => api('POST', `/api/sessions/${id}/kill`), { disabled: !s.alive }],
     [t('Ouvrir dans…'), () => showMenu(openItems(id), ...lastMenuPos)],
-    ['Copier le chemin', () => clip.copy(s.cwd)],
+    [t('Copier le chemin'), () => clip.copy(s.cwd)],
     '-',
+    [tBasculer(s, to), () => switchAgent(id), { kbd: id === active ? `${MOD}+Alt+S` : '' }],
     ...moreItems(id).slice(0, -1),
     ...(s.claudeSessionId ? [['Copier l’identifiant de session', () => clip.copy(s.claudeSessionId)]] : []),
     '-',
-    ['Fermer', () => closeSession(id), { danger: true, kbd: id === active ? `${MOD}+Alt+W` : '' }],
+    [t('Fermer'), () => closeSession(id), { danger: true, kbd: id === active ? `${MOD}+Alt+W` : '' }],
   ];
 }
+/** Montre le briefing qui serait transmis si l'on basculait maintenant. */
+async function previewHandoff(id) {
+  const s = sessions.get(id); if (!s) return;
+  toast(t('Analyse du transcript…'));
+  let r;
+  try { r = await api('GET', `/api/sessions/${id}/handoff`); }
+  catch (e) { return toast(e.message, true); }
+  const to = s.agent === 'agy' ? 'claude' : 'agy';
+  const name = `transfert-${s.agent}-vers-${to}`;
+  const md = r.markdown + `\n\n---\n_${r.stats.turns} tours · ${r.stats.users} messages utilisateur · `
+    + `${r.stats.agents} réponses · ${r.stats.written} fichiers modifiés · ${r.stats.chars} caractères_\n`;
+  showMenu([
+    [`${t('Copier le briefing')} (${Math.round(r.stats.chars / 100) / 10}k car.)`, () => clip.copy(md).then(() => toast(t('Copié')))],
+    [t('Enregistrer en Markdown (.md)'), () => window.csmFeatures.download(`${name}.md`, md, 'text/markdown')],
+    '-',
+    [t('Basculer maintenant'), () => switchAgent(id)],
+  ], ...lastMenuPos);
+}
+
 // Menu clic droit sur une session de la liste.
 function sessionMenu(id, x, y) { showMenu(sessionItems(id), x, y); }
-
 function terminalItems(id) {
   const t = terms.get(id); if (!t) return [];
   const { term } = t;
@@ -735,6 +791,7 @@ function moreItems(id) {
     [t('Chronologie'), () => window.csmFeatures.showPanel('timeline')],
     [t('Consommation'), () => window.csmFeatures.showPanel('usage')],
     [t('Exporter la conversation…'), () => window.csmFeatures.exportConversation(s), { disabled: !(s.conversationId || s.claudeSessionId) }],
+    [t('Aperçu du transfert de contexte…'), () => previewHandoff(id), { disabled: !(s.conversationId || s.claudeSessionId) }],
     [t('Enregistrer comme modèle…'), () => saveSessionAsTemplate(id)],
     '-',
     [t('Groupe…'), () => window.csmFeatures.setGroup(id)],
@@ -852,7 +909,8 @@ function syncAgentForm(agent) {
 
   syncEffortForAgent(agent, $('#selModel').value);
 
-  const lblExtra = $('#lblExtra');
+  // Le libellé contient l'input : seul le texte est mis à jour, sinon l'input disparaît.
+  const lblExtra = $('#lblExtraText');
   if (lblExtra) lblExtra.textContent = agent === 'claude' ? 'Arguments supplémentaires pour claude' : 'Arguments supplémentaires pour agy';
 }
 
@@ -1192,6 +1250,7 @@ function globalShortcut(e) {
   if (k === 'n') { openNew(); return true; }
   if (k === 'h') { openHistory(); return true; }
   if (k === 'r') { startRename(); return true; }
+  if (k === 's' && active) { switchAgent(active); return true; }
   if (k === 'w') { $('#btnClose').click(); return true; }
   // Chiffres par touche physique (AZERTY : 1 = « & »). Un caractère AltGr (@ # { [ | \ ^ ] }) n'est pas un raccourci.
   const digit = /^Digit[1-9]$/.test(e.code) && (/^[0-9&é"'(\-è_çà]$/.test(e.key)) ? +e.code.slice(5) : 0;
@@ -1211,7 +1270,7 @@ function globalShortcut(e) {
   }
   return false;
 }
-document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && globalShortcut(e)) e.preventDefault(); });
+document.addEventListener('keydown', e => { if (isModAlt(e) && globalShortcut(e)) e.preventDefault(); });
 // Ctrl+K / Cmd+K : palette ; Ctrl+, : réglages ; Ctrl+Maj+F : recherche dans les sessions.
 document.addEventListener('keydown', e => {
   const mod = IS_MAC ? e.metaKey : e.ctrlKey;

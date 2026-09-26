@@ -11,6 +11,12 @@ const opt = n => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : unde
 if (argv.includes('--version')) { console.log('0.0.0 (faux agy)'); process.exit(0); }
 
 const resume = opt('--conversation');
+
+// Prompt initial : `agy --prompt-interactive "…"`, ou l'argument positionnel de `claude "…"`.
+const VALUE_FLAGS = new Set(['--model', '--effort', '--mode', '--conversation', '--settings', '--project',
+  '--add-dir', '--log-file', '--agent', '--json-schema', '--input-format', '--output-format', '--print-timeout', '--prompt-interactive']);
+const positional = argv.filter((a, i) => !a.startsWith('-') && !VALUE_FLAGS.has(argv[i - 1]));
+const initialPrompt = opt('--prompt-interactive') || positional.join(' ').trim() || '';
 const sessionId = resume || crypto.randomUUID();
 const cwd = process.cwd();
 
@@ -42,7 +48,7 @@ async function prompt(text) {
   if (/longue/.test(text)) { pending = 'long'; out('\r\n✻ réfléchit…'); return; }
   if (/demande/.test(text)) { pending = 'ask'; await hook('PreToolUse', { message: 'Antigravity attend confirmation' }); out('\r\nDo you want to proceed? ❯ 1. Yes'); return; }
 
-  const reply = `echo: ${text}`;
+  const reply = `echo: ${text.length > 160 ? text.slice(0, 160) + '…' : text}`;
   log({ source: 'MODEL', type: 'PLANNER_RESPONSE', content: reply, tool_calls: [{ name: 'view_file', args: { AbsolutePath: path.join(cwd, 'README.md') } }] });
   if (/touch (\S+)/.test(text)) fs.writeFileSync(path.join(cwd, RegExp.$1), `créé par le faux agy (${turn})\n`);
   out(`\r\n● ${reply}\r\n`);
@@ -53,6 +59,11 @@ async function prompt(text) {
 (async () => {
   await hook('SessionStart', { source: resume ? 'resume' : 'startup' });
   out(`FAUX AGY prêt ${resume ? '(reprise ' + resume.slice(0, 8) + ')' : ''} — session ${sessionId}\r\n❯ `);
+  // Sonde de test : le prompt initial reçu est journalisé pour être vérifié.
+  if (process.env.SM_PROBE) {
+    try { fs.appendFileSync(process.env.SM_PROBE, JSON.stringify({ sessionId, resume: resume || null, prompt: initialPrompt }) + '\n'); } catch { }
+  }
+  if (initialPrompt) { out('\r\n  ↪ prompt initial reçu\n'); await prompt(initialPrompt); }
 
   let buf = '';
   process.stdin.setRawMode?.(true);
