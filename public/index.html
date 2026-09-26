@@ -375,6 +375,43 @@
   </form>
 </dialog>
 
+<dialog id="dlgLock">
+  <form method="dialog">
+    <h2 id="lkTitle">Verrouiller</h2>
+    <p class="hint">Le contenu de la session est masqué et sa saisie bloquée tant qu'elle n'est pas déverrouillée. Elle continue de tourner. Attention : le mot de passe ne peut pas être récupéré.</p>
+    <label id="lkCurRow">Mot de passe actuel <input type="password" id="lkCur" autocomplete="current-password"></label>
+    <label id="lkNewRow">Mot de passe <input type="password" id="lkNew" autocomplete="new-password"></label>
+    <label id="lkNew2Row">Confirmer le mot de passe <input type="password" id="lkNew2" autocomplete="new-password"></label>
+    <label id="lkHintRow">Indice (facultatif, visible sur l'écran de verrouillage) <input id="lkHint" maxlength="120" autocomplete="off"></label>
+    <p id="lkErr" class="err"></p>
+    <menu>
+      <button value="cancel" formnovalidate>Annuler</button>
+      <button value="ok" class="primary">Valider</button>
+    </menu>
+  </form>
+</dialog>
+
+<div id="ctx" class="ctx" popover="manual"></div>
+
+<dialog id="dlgImport">
+  <form method="dialog">
+    <h2 id="impTitle">Ramener dans Sessions Manager</h2>
+    <p class="impInfo">Ta conversation n'est <b>pas perdue</b> : elle reprend dans Sessions Manager exactement là où elle en est (historique, contexte, dossier).</p>
+    <div class="impChoices">
+      <button value="move" class="primary choice">
+        <b>Déplacer</b>
+        <span>La session passe dans Sessions Manager. Dans le terminal, l'agent s'arrête : tu peux fermer cet onglet.</span>
+      </button>
+      <button value="copy" class="choice">
+        <b>Copier</b>
+        <span>Le terminal continue normalement. Sessions Manager ouvre une copie de la conversation, qui évolue ensuite séparément.</span>
+      </button>
+    </div>
+    <p id="impWarn" class="impWarn" hidden></p>
+    <menu><button value="cancel">Annuler</button></menu>
+  </form>
+</dialog>
+
 <dialog id="dlgImportExternal">
   <form method="dialog" id="formImportExternal">
     <h2>Sessions ouvertes dans un terminal</h2>
@@ -414,7 +451,9 @@
 <script src="addon-web-links.js"></script>
 <script src="addon-webgl.js"></script>
 <script src="app.js"></script>
+<script src="panel.js"></script>
 <script src="settings.js"></script>
-<script src="features.js"></script>
+<script src="palette.js"></script>
+<script src="lock.js"></script>
 </body>
 </html>

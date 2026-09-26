@@ -20,5 +20,6 @@ const nativeApi = {
   },
 };
 
+contextBridge.exposeInMainWorld('smNative', nativeApi);
 contextBridge.exposeInMainWorld('asmNative', nativeApi);
 contextBridge.exposeInMainWorld('csmNative', nativeApi);
