@@ -45,8 +45,8 @@ async function prompt(text) {
   await hook('PreInvocation', { prompt: text });
   await hook('PreToolUse', { toolCall: { name: 'list_dir', args: { DirectoryPath: cwd } } });
 
-  if (/longue/.test(text)) { pending = 'long'; out('\r\n✻ réfléchit…'); return; }
-  if (/demande/.test(text)) { pending = 'ask'; await hook('PreToolUse', { message: 'Antigravity attend confirmation' }); out('\r\nDo you want to proceed? ❯ 1. Yes'); return; }
+  if (/^longue\b/.test(text)) { pending = 'long'; out('\r\n✻ réfléchit…'); return; }
+  if (/^demande\b/.test(text)) { pending = 'ask'; await hook('PreToolUse', { message: 'Antigravity attend confirmation' }); out('\r\nDo you want to proceed? ❯ 1. Yes'); return; }
 
   const reply = `echo: ${text.length > 160 ? text.slice(0, 160) + '…' : text}`;
   log({ source: 'MODEL', type: 'PLANNER_RESPONSE', content: reply, tool_calls: [{ name: 'view_file', args: { AbsolutePath: path.join(cwd, 'README.md') } }] });
