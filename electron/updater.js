@@ -3,8 +3,16 @@
 // Windows : electron-updater (GitHub Releases) — téléchargement en arrière-plan, installation au redémarrage.
 // macOS : Squirrel.Mac exige une app signée par Apple → simple vérification + lien vers la release.
 const { app, net, shell, Notification } = require('electron');
+const pkg = require('../package.json');
 
-const REPO = 'khalilbenaz/agy-sessions-manager';
+// Le dépôt vient de package.json. Il était codé en dur et pointait encore vers
+// l'ancien dépôt : l'app annonçait donc la version de l'ancienne application.
+const REPO = (() => {
+  const pub = pkg.build && pkg.build.publish && pkg.build.publish[0];
+  if (pub && pub.owner && pub.repo) return `${pub.owner}/${pub.repo}`;
+  const m = String((pkg.repository && (pkg.repository.url || pkg.repository)) || '').match(/github\.com[:/]+([^/]+)\/([^/.]+)/);
+  return m ? `${m[1]}/${m[2]}` : '';
+})();
 const EVERY = 6 * 3600e3;
 
 function newer(a, b) { // a > b ?
@@ -33,13 +41,14 @@ module.exports = function setupUpdater({ enabled, beforeInstall, onState, log })
       updater.on('download-progress', p => set({ status: 'downloading', progress: Math.round(p.percent) }));
       updater.on('update-downloaded', i => {
         set({ status: 'ready', version: i.version });
-        if (Notification.isSupported()) new Notification({ title: 'Claude Sessions', body: `Version ${i.version} prête : redémarre l'application pour l'installer (les sessions reviennent).` }).show();
+        if (Notification.isSupported()) new Notification({ title: 'Sessions Manager', body: `Version ${i.version} prête : redémarre l'application pour l'installer (les sessions reviennent).` }).show();
       });
       updater.on('error', e => set({ status: 'error', error: String(e && e.message || e).slice(0, 300) }));
     } catch (e) { log(`[maj] electron-updater indisponible : ${e.message}`); updater = null; }
   }
 
   async function checkMac() {
+    if (!REPO) { set({ status: 'error', error: 'dépôt introuvable dans package.json' }); return; }
     set({ status: 'checking', error: null });
     try {
       const r = await net.fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
@@ -47,7 +56,7 @@ module.exports = function setupUpdater({ enabled, beforeInstall, onState, log })
       if (rel.tag_name && newer(rel.tag_name, app.getVersion())) {
         set({ status: 'available', version: rel.tag_name.replace(/^v/, ''), url: rel.html_url });
         if (Notification.isSupported()) {
-          const n = new Notification({ title: 'Claude Sessions', body: `Nouvelle version ${rel.tag_name} disponible — cliquer pour la télécharger.` });
+          const n = new Notification({ title: 'Sessions Manager', body: `Nouvelle version ${rel.tag_name} disponible — cliquer pour la télécharger.` });
           n.on('click', () => shell.openExternal(rel.html_url)); n.show();
         }
       } else set({ status: 'uptodate' });

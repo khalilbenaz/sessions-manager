@@ -64,6 +64,7 @@
     <button id="btnOpen" title="Ouvrir le dossier dans…">↗ Ouvrir</button>
     <button id="btnAttach" class="icon" title="Joindre une image ou un fichier (ou glisser-déposer / coller dans le terminal)">📎</button>
     <input type="file" id="fileInput" multiple hidden>
+    <button id="btnSwitch" class="switch-btn" title="Basculer vers l’autre agent en transmettant le contexte (Ctrl+Alt+S)">🔀 <span id="btnSwitchLabel">Basculer</span></button>
     <button id="btnRestart" title="Relancer / reprendre la conversation">Reprendre</button>
     <button id="btnMore" class="icon" title="Plus d'actions">⋯</button>
     <button id="btnKill" hidden>Arrêter</button>
@@ -202,13 +203,13 @@
 
 <dialog id="dlgQuota" class="wide quota-dialog">
   <div class="histHead">
-    <h2>🔷 Quotas &amp; Limites Antigravity</h2>
+    <h2 id="quotaTitle">📊 Quotas &amp; Limites</h2>
     <span class="spacer"></span>
     <button type="button" id="btnRefreshQuota" class="icon" title="Actualiser les quotas">⟳</button>
     <button id="quotaClose" class="icon">✕</button>
   </div>
   <div id="quotaContent" class="quota-body">
-    <p class="hint">Chargement des quotas Antigravity…</p>
+    <p class="hint">Chargement des quotas…</p>
   </div>
 </dialog>
 

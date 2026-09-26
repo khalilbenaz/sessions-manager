@@ -149,7 +149,7 @@
       <li title="${esc(x.target)}"><span class="ti">${ICON[x.name] || '•'}</span>
         <span class="tn">${esc(x.name)}</span>
         <span class="tt">${esc(x.target.replace(s?.cwd || '\u0000', '.'))}</span>
-        <span class="tw">${x.ts ? new Date(x.ts).toLocaleTimeString(LANG === 'en' ? 'en-GB' : 'fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}</span></li>`).join('')}</ul>`;
+        <span class="tw">${x.ts ? new Date(x.ts).toLocaleTimeString((F.locale ? F.locale() : 'fr-FR'), { hour: '2-digit', minute: '2-digit' }) : ''}</span></li>`).join('')}</ul>`;
   }
 
   function fmtRemainingTime(targetTs) {
@@ -176,7 +176,7 @@
           const rem = q.remainingPercent != null ? q.remainingPercent : 0;
           const used = q.usedPercent != null ? q.usedPercent : (100 - rem);
           const colorClass = rem > 50 ? 'quota-good' : (rem >= 20 ? 'quota-warn' : 'quota-crit');
-          const resetDateStr = q.resetTime ? new Date(q.resetTime).toLocaleString(LANG === 'en' ? 'en-GB' : 'fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : (q.resetIso || '');
+          const resetDateStr = q.resetTime ? new Date(q.resetTime).toLocaleString((F.locale ? F.locale() : 'fr-FR'), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : (q.resetIso || '');
           const resetRel = q.resetTime ? fmtRemainingTime(q.resetTime) : '';
           return `
             <div class="quota-card ${colorClass}">
@@ -212,6 +212,7 @@
   }
   F.renderQuotaCards = renderQuotaCards;
   F.fmtRemainingTime = fmtRemainingTime;
+  F.esc = esc;
 
   // ---------------------------------------------------------------- Consommation
   async function loadUsage() {

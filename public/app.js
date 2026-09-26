@@ -2,6 +2,7 @@
 const $ = s => document.querySelector(s);
 const TOKEN = document.querySelector('meta[name="sm-token"]')?.content || document.querySelector('meta[name="asm-token"]')?.content || document.querySelector('meta[name="csm-token"]')?.content || '';
 const IS_MAC = /Mac/i.test(navigator.platform || navigator.userAgent);
+const AGENT_LABEL = { claude: 'Claude Code', agy: 'Antigravity CLI' };
 /** Vrai pour ⌘+Alt sur macOS, Ctrl+Alt ailleurs. */
 const isModAlt = e => (IS_MAC ? e.metaKey : e.ctrlKey) && e.altKey;
 const LS = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } } };
@@ -15,7 +16,7 @@ let historyCache = [];
 const STATUS_LABEL = { starting: t('démarrage'), working: t('travaille'), attention: t('attend une réponse'), idle: t('prêt'), exited: t('arrêtée') };
 
 // Réglages (serveur) : voir lib/settings.js. Valeurs par défaut en attendant la réponse.
-let SETTINGS = { theme: 'system', fontSize: 14, fontFamily: '', defaultAgent: 'claude', defaultClaudeModel: 'claude-3-7-sonnet', defaultClaudeEffort: 'medium', defaultAgyModel: 'gemini-3.8-flash', defaultAgyEffort: 'medium', defaultMode: '', notifications: true, sound: 'soft', dnd: false, waitingMinutes: 10, longRunMinutes: 0, worktreeDefault: false, compactSidebar: false, autoUpdate: true, onboarded: true };
+let SETTINGS = { theme: 'system', fontSize: 14, fontFamily: '', defaultAgent: 'claude', defaultClaudeModel: '', defaultClaudeEffort: 'medium', defaultAgyModel: '', defaultAgyEffort: 'medium', defaultMode: '', notifications: true, sound: 'soft', dnd: false, waitingMinutes: 10, longRunMinutes: 0, worktreeDefault: false, compactSidebar: false, autoUpdate: true, onboarded: true };
 const THEMES = {
   dark: { background: '#101114', foreground: '#e6e6e6', cursor: '#d97757', selectionBackground: '#3a4150' },
   light: { background: '#fbfaf8', foreground: '#1f1b18', cursor: '#c4613f', selectionBackground: '#d9d2c7', black: '#1f1b18', brightBlack: '#6b6560', white: '#8b8580', brightWhite: '#1f1b18', yellow: '#9a6b00', brightYellow: '#8a5a00', green: '#1f7a3f', brightGreen: '#1a6b36', cyan: '#0e6f86', brightCyan: '#0b5f73', blue: '#1f5fbf', brightBlue: '#1a4fa0', magenta: '#8a3fa0', brightMagenta: '#7a2f90', red: '#c0392b', brightRed: '#a93226' },
@@ -36,7 +37,15 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => SET
 async function loadSettings() {
   try { SETTINGS = { ...SETTINGS, ...(await api('GET', '/api/settings')) }; } catch { }
   setLang(SETTINGS.lang); applySettings();
+  publishLocale();
 }
+
+/** La locale vit dans app.js : panel.js en a besoin pour formater dates et nombres. */
+function publishLocale() {
+  window.csmFeatures = window.csmFeatures || {};
+  window.csmFeatures.locale = () => (SETTINGS.lang === 'en' ? 'en-GB' : 'fr-FR');
+}
+publishLocale();
 async function saveSettings(patch) {
   SETTINGS = { ...SETTINGS, ...patch };
   applySettings();
@@ -445,6 +454,17 @@ function renderBar() {
   $('#curMsg').className = `msg ${s.status}`;
   $('#btnKill').disabled = !s.alive;
   $('#btnRestart').textContent = s.alive ? t('Relancer') : (s.conversationId || s.claudeSessionId ? t('Reprendre') : t('Relancer'));
+  // Bouton de bascule : toujours visible, il annonce la cible et son raccourci.
+  const sw = $('#btnSwitch'), swL = $('#btnSwitchLabel');
+  if (sw && swL) {
+    const to = isAgy ? 'claude' : 'agy';
+    swL.textContent = t('Basculer vers') + ' ' + AGENT_LABEL[to];
+    sw.title = `${t('Basculer vers')} ${AGENT_LABEL[to]} — ${t('le contexte est transmis')} (${MOD}+Alt+S)`;
+    sw.classList.toggle('to-claude', to === 'claude');
+    sw.classList.toggle('to-agy', to === 'agy');
+    sw.classList.toggle('busy', !!s.switching);
+    sw.disabled = !!s.switching;
+  }
   $('#curBranch').hidden = !s.worktree;
   $('#curBranch').textContent = s.worktree ? `⎇ ${s.worktree.branch}` : '';
   $('#curBranch').title = s.worktree ? `${t('Worktree')} : ${s.worktree.path}\n${t('base')} : ${s.worktree.base}` : '';
@@ -597,15 +617,13 @@ window.addEventListener('drop', e => {
   if (active && !e.target.closest('.term')) attachFiles(active, [...e.dataTransfer.files]);
 });
 
-const AGENT_LABEL = { claude: 'Claude Code', agy: 'Antigravity CLI' };
-
 /**
  * Bascule la session vers l'autre agent en transmettant le contexte.
  * Le serveur reconstruit un briefing depuis le transcript courant, le reprend comme
  * premier prompt de l'agent cible et, si cette session avait déjà utilisé cet agent,
  * reprend aussi sa conversation précédente : les deux historiques s'accumulent.
  */
-async function switchAgent(id) {
+async function switchAgent(id, model) {
   const s = sessions.get(id); if (!s) return;
   if (s.switching) return;
   const to = s.agent === 'agy' ? 'claude' : 'agy';
@@ -613,7 +631,9 @@ async function switchAgent(id) {
   sessions.set(id, { ...s, agent: to, switching: true });
   render(); if (id === active) renderBar();
   try {
-    const r = await api('POST', `/api/sessions/${id}/switch`, { to });
+    const body = { to };
+    if (model !== undefined && model !== null) body.model = model;
+    const r = await api('POST', `/api/sessions/${id}/switch`, body);
     sessions.set(id, { ...sessions.get(id), ...(r && r.session), switching: false });
     render(); if (id === active) renderBar();
     const st = r && r.stats;
@@ -625,6 +645,14 @@ async function switchAgent(id) {
     render(); if (id === active) renderBar();
     toast(`${t('Bascule impossible')} : ${e.message}`, true);
   }
+}
+
+/** Bascule en choisissant explicitement le modèle de l'agent cible (utile si un quota est épuisé). */
+function switchWithModel(id, to) {
+  const list = (to === 'agy' && agyModels.length ? agyModels : AGENT_MODELS[to]) || [];
+  const items = list.map(m => [m.label || m.value, () => switchAgent(id, m.value)]);
+  items.push('-', [t('Basculer sans changer de modèle'), () => switchAgent(id)]);
+  showMenu(items, ...lastMenuPos);
 }
 
 const tBasculer = (s, to) => t('Basculer vers ') + AGENT_LABEL[to]
@@ -743,22 +771,44 @@ window.addEventListener('blur', hideMenu);
 window.addEventListener('resize', hideMenu);
 for (const d of document.querySelectorAll('dialog')) d.addEventListener('close', hideMenu);
 
+/** Échappement HTML : delegate à panel.js quand il est chargé. */
+const escHtml = s => (window.csmFeatures && window.csmFeatures.esc ? window.csmFeatures.esc(s)
+  : String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]));
+
 async function openQuotaDialog(force = false) {
   const dlg = $('#dlgQuota');
   const box = $('#quotaContent');
   dlg.showModal();
   if (!force && box.dataset.loaded) return;
-  box.innerHTML = `<p class="hint">${t('Chargement des quotas Antigravity…')}</p>`;
-  try {
-    const res = await api('GET', `/api/agents/agy/quota${force ? '?force=true' : ''}`);
-    if (res.quotas && res.quotas.length) {
-      box.innerHTML = window.csmFeatures?.renderQuotaCards ? window.csmFeatures.renderQuotaCards(res.quotas, res.updatedAt) : `<pre>${JSON.stringify(res.quotas, null, 2)}</pre>`;
-      box.dataset.loaded = '1';
-    } else {
-      box.innerHTML = `<p class="hint">${t('Aucun quota retourné par Antigravity CLI.')}${res.error ? '<br><span class="err">' + res.error + '</span>' : ''}</p>`;
+  // Le quota affiché suit l'agent de la session active, l'autre agent reste visible en dessous.
+  const cur = sessions.get(active);
+  const main = cur && cur.agent === 'claude' ? 'claude' : 'agy';
+  const other = main === 'agy' ? 'claude' : 'agy';
+  const title = $('#quotaTitle');
+  if (title) title.textContent = main === 'agy' ? '🔷 Quotas & Limites Antigravity' : '🧡 Quotas & Limites Claude Code';
+  box.innerHTML = `<p class="hint">${t('Chargement des quotas…')}</p>`;
+  const draw = (agent, res) => {
+    const cards = window.csmFeatures?.renderQuotaCards
+      ? window.csmFeatures.renderQuotaCards(res.quotas, res.updatedAt)
+      : `<pre>${JSON.stringify(res.quotas, null, 2)}</pre>`;
+    if (!res.quotas || !res.quotas.length) {
+      return `<p class="hint">${t('Aucun quota disponible.')}${res.error ? '<br><span class="err">' + escHtml(res.error) + '</span>' : ''}</p>`;
     }
+    const head = `<h3 class="quota-agent-head ${agent === 'agy' ? 'is-agy' : 'is-claude'}">`
+      + `${agent === 'agy' ? '🔷 Antigravity CLI' : '🧡 Claude Code'}</h3>`;
+    // renderQuotaCards renvoie déjà son pied « dernière mise à jour ».
+    return head + cards;
+  };
+  try {
+    const q = force ? '?force=true' : '';
+    const [a, b] = await Promise.all([
+      api('GET', `/api/agents/${main}/quota${q}`).catch(e => ({ quotas: [], error: e.message })),
+      api('GET', `/api/agents/${other}/quota${q}`).catch(e => ({ quotas: [], error: e.message }))
+    ]);
+    box.innerHTML = draw(main, a) + '<hr class="quota-sep">' + draw(other, b);
+    box.dataset.loaded = '1';
   } catch (e) {
-    box.innerHTML = `<p class="err">${t('Échec de la récupération des quotas :')} ${e.message}</p>`;
+    box.innerHTML = `<p class="err">${t('Échec de la récupération des quotas :')} ${escHtml(e.message)}</p>`;
   }
 }
 $('#btnQuota').onclick = () => openQuotaDialog();
@@ -766,6 +816,7 @@ $('#quotaClose').onclick = () => $('#dlgQuota').close();
 $('#btnRefreshQuota').onclick = () => openQuotaDialog(true);
 
 $('#btnRestart').onclick = () => active && api('POST', `/api/sessions/${active}/restart`);
+$('#btnSwitch').onclick = () => active && switchAgent(active);
 function openItems(id) {
   return [
     [t('Dans l’éditeur'), () => openIn(id, 'editor'), { kbd: `${MOD}+Alt+E` }],
@@ -782,7 +833,12 @@ $('#btnCompact').onclick = () => saveSettings({ compactSidebar: !SETTINGS.compac
 document.querySelectorAll('[data-layout]').forEach(b => { b.onclick = () => setLayout(b.dataset.layout); });
 function moreItems(id) {
   const s = sessions.get(id); if (!s) return [];
+  const to = s.agent === 'agy' ? 'claude' : 'agy';
   return [
+    [tBasculer(s, to), () => switchAgent(id), { kbd: `${MOD}+Alt+S` }],
+    [t('Basculer en choisissant le modèle…'), () => switchWithModel(id, to)],
+    [t('Aperçu du transfert de contexte…'), () => previewHandoff(id), { disabled: !(s.conversationId || s.claudeSessionId) }],
+    '-',
     [t('File d’attente…'), () => window.csmFeatures.openQueue(id), { kbd: `${MOD}+Alt+Q` }],
     [t('Insérer un prompt…'), () => window.csmFeatures.openPrompts(id)],
     [t('Envoyer à plusieurs sessions…'), () => window.csmFeatures.openBroadcast(), { kbd: `${MOD}+Alt+B` }],
@@ -791,7 +847,6 @@ function moreItems(id) {
     [t('Chronologie'), () => window.csmFeatures.showPanel('timeline')],
     [t('Consommation'), () => window.csmFeatures.showPanel('usage')],
     [t('Exporter la conversation…'), () => window.csmFeatures.exportConversation(s), { disabled: !(s.conversationId || s.claudeSessionId) }],
-    [t('Aperçu du transfert de contexte…'), () => previewHandoff(id), { disabled: !(s.conversationId || s.claudeSessionId) }],
     [t('Enregistrer comme modèle…'), () => saveSessionAsTemplate(id)],
     '-',
     [t('Groupe…'), () => window.csmFeatures.setGroup(id)],
@@ -851,18 +906,42 @@ async function saveSessionAsTemplate(id) {
   list.push({ name, cwd: s.worktree ? s.worktree.repo : s.cwd, model, mode, extra: extra.join(' '), worktree: !!s.worktree, prompt: '', group: s.group || '' });
   try { await api('PUT', '/api/templates', list); toast(`${t('Modèle enregistré')} : ${name}`); } catch (e) { toast(e.message, true); }
 }
+// Listes de repli, utilisées seulement si l'agent ne peut pas les fournir.
+// Claude : les alias documentés par le CLI suivent toujours le dernier modèle.
+// Modèles Antigravity réels, lus depuis `agy models` (le serveur les met en cache 6 h).
+// Sans cela la liste serait figée dans le code et vite périmée.
+let agyModels = [];
+async function loadAgyModels() {
+  try {
+    const r = await api('GET', '/api/agents/agy/models');
+    if (r && r.ok && r.models && r.models.length) {
+      agyModels = r.models;
+      const sel = $('#selModel');
+      const forAgy = sel && sel.dataset.agent === 'agy';
+      if (forAgy) {
+        const want = sel.value;
+        sel.innerHTML = agyModels.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
+        sel.value = agyModels.some(m => m.value === want) ? want : '';
+        syncEffortForAgent('agy', sel.value);
+      }
+    }
+  } catch { /* la liste de repli reste en place */ }
+}
+
 const AGENT_MODELS = {
   claude: [
-    { value: 'claude-3-7-sonnet', label: 'Claude 3.7 Sonnet (Thinking)' },
-    { value: 'claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
-    { value: 'claude-3-5-haiku', label: 'Claude 3.5 Haiku' },
-    { value: 'claude-3-opus', label: 'Claude 3 Opus' },
     { value: '', label: 'Modèle par défaut Claude' },
+    { value: 'sonnet', label: 'Sonnet (alias — dernier Sonnet)' },
+    { value: 'opus', label: 'Opus (alias — dernier Opus)' },
+    { value: 'haiku', label: 'Haiku (alias — dernier Haiku)' },
+    { value: 'fable', label: 'Fable (alias — dernier Fable)' },
+    { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+    { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+    { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
   ],
   agy: [
-    { value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Recommandé)' },
-    { value: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash' },
-    { value: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro' },
+    { value: 'gemini-3.8-flash-medium', label: 'Gemini 3.8 Flash (Recommandé)' },
+    { value: 'gemini-3.1-pro-high', label: 'Gemini 3.1 Pro' },
     { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
     { value: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6' },
     { value: 'gpt-oss-120b-medium', label: 'GPT-OSS 120B' },
@@ -895,12 +974,16 @@ function syncAgentForm(agent) {
     if (radio) radio.checked = isThis;
   });
 
-  const modelList = AGENT_MODELS[agent] || [];
-  $('#selModel').innerHTML = modelList.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
+  const modelList = (agent === 'agy' && agyModels.length ? agyModels : AGENT_MODELS[agent]) || [];
+  const sel = $('#selModel');
+  sel.dataset.agent = agent;
+  sel.innerHTML = modelList.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
   if (agent === 'claude') {
-    $('#selModel').value = SETTINGS.defaultClaudeModel || 'claude-3-7-sonnet';
+    sel.value = SETTINGS.defaultClaudeModel || '';
   } else {
-    $('#selModel').value = SETTINGS.defaultAgyModel || 'gemini-3.8-flash';
+    const want = SETTINGS.defaultAgyModel || '';
+    // Un modèle par défaut devenu indisponible ne doit pas casser la sélection.
+    sel.value = modelList.some(m => m.value === want) ? want : '';
   }
 
   const modeList = AGENT_MODES[agent] || [];
@@ -986,6 +1069,7 @@ function openNew(tpl) {
   f.group.value = cur?.group || '';
   f.worktree.checked = !!SETTINGS.worktreeDefault;
   loadHistory();
+  if (agent === 'agy') loadAgyModels();
   loadTemplates().then(list => {
     $('#tplRow').hidden = false;
     f.template.innerHTML = `<option value="">${list.length ? t('— aucun —') : t('— aucun modèle : « Enregistrer comme modèle » en bas —')}</option>` + list.map(x => `<option value="${x.id}"></option>`).join('');
@@ -1292,7 +1376,8 @@ window.csmNative?.onAction(a => {
   else if (a.startsWith('select:') && sessions.has(a.slice(7))) select(a.slice(7)); // depuis le menu de l'icône
 });
 
-window.csmFeatures = {}; // rempli par panel.js, settings.js, palette.js
+window.csmFeatures = window.csmFeatures || {}; // rempli par panel.js, settings.js, palette.js
+publishLocale();
 loadSettings().finally(() => { setupFilters(); connect(); setLayout(layout); window.dispatchEvent(new Event('csm:ready')); document.documentElement.dataset.ready = '1'; }); // réglages et langue définitifs (repère pour les tests)
 
 const UI_VERSION = document.querySelector('meta[name="sm-version"]')?.content || document.querySelector('meta[name="asm-version"]')?.content || document.querySelector('meta[name="csm-version"]')?.content || '';

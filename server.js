@@ -411,7 +411,7 @@ function fitModel(agent, model) {
   return m;
 }
 
-function switchAgent(s, to) {
+function switchAgent(s, to, override = {}) {
   const from = s.agent === 'agy' ? 'agy' : 'claude';
   const srcId = s.conversationId || s.claudeSessionId || null;
   if (srcId) s.agentIds = { ...(s.agentIds || {}), [from]: srcId };
@@ -437,10 +437,15 @@ function switchAgent(s, to) {
   // --- Configuration propre à l'agent cible
   const targetId = (s.agentIds || {})[to] || null;
   const cfg = s.agentCfg?.[to] || agentDefaults(to);
+  // Un modèle peut être imposé au moment de la bascule (quota épuisé sur un fournisseur).
+  if (override.model !== undefined) {
+    s.agentCfg = { ...(s.agentCfg || {}), [to]: { ...cfg, model: override.model || '' } };
+  }
+  const useCfg = s.agentCfg?.[to] || cfg;
   s.agent = to;
-  s.model = fitModel(to, cfg.model);
-  s.effort = to === 'claude' ? '' : (cfg.effort || '');
-  s.mode = to === 'claude' ? (cfg.mode === 'dangerously-skip-permissions' ? cfg.mode : '') : (cfg.mode || '');
+  s.model = fitModel(to, useCfg.model);
+  s.effort = to === 'claude' ? '' : (useCfg.effort || '');
+  s.mode = to === 'claude' ? (useCfg.mode === 'dangerously-skip-permissions' ? useCfg.mode : '') : (useCfg.mode || '');
   s.conversationId = to === 'agy' ? targetId : null;
   s.claudeSessionId = to === 'claude' ? targetId : null;
   s.initialPrompt = brief || '';
@@ -895,10 +900,11 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {});
     }
     if (s && m[2] === 'switch' && req.method === 'POST') {
-      const { to } = await readBody(req);
+      const body = await readBody(req);
+      const to = body && body.to;
       if (to !== 'claude' && to !== 'agy') return json(res, 400, { error: 'agent cible inconnu (claude|agy)' });
       if (to === s.agent) return json(res, 400, { error: 'la session utilise déjà cet agent' });
-      const r = switchAgent(s, to);
+      const r = switchAgent(s, to, { model: body && body.model });
       return json(res, 200, { session: publicView(s), brief: r.brief, stats: r.stats });
     }
     if (s && m[2] === 'handoff' && req.method === 'GET') {
