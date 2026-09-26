@@ -84,8 +84,8 @@ sm install    # Configure le démarrage auto et ouvre l'interface
 
 ```
 ┌─ barre latérale ────────┬─ barre de la session active ────────────────────────────────────────────────────────┐
-│ + Nouvelle              │ ● 🧡 Claude  Projet Web ✎  [gemini-3.1-pro ▾]  ⎇ main  dossier   📊 Quota   ± Modifs │
-│ Rechercher…   Ctrl+K    │                                                      🔀 Basculer   Reprendre  ⋯  ✕ │
+│ + Nouvelle              │ ● 🧡 Claude  Projet Web ✎  [Claude Opus 5.5 ▾]  ⎇ main  dossier   📊 Quota   ± Modifs│
+│ Rechercher…   Ctrl+K    │                                                     🔀 Basculer  Redémarrer  ⋯  ✕│
 │ [Tous] [🧡 Claude] [🔷] │├──────────────────────────────────────────────────────────────┬─────────────────────┤
 │ ─ ÉPINGLÉES ─       1   │                                                              │ panneau latéral     │
 │ ● 🧡 Backend API        │   terminal de la session (ou 2 / 4 panneaux)                 │  Modifications      │
@@ -98,8 +98,8 @@ sm install    # Configure le démarrage auto et ouvre l'interface
 
 - **Filtres de la barre latérale** : filtrez vos sessions actives d'un clic avec `[ Tous ]`, `[ 🧡 Claude ]` ou `[ 🔷 AGY ]`.
 - **Badges d'agent** : chaque élément affiche un badge visuel net pour ne jamais confondre vos agents.
-- **Affichage du modèle en inline** : visualisez en permanence le modèle en cours d'exécution dans la barre supérieure. Un clic dessus (ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>) ouvre un menu pour changer de modèle et de niveau d'effort à la volée.
-- **Barre supérieure** : indique l'agent en cours d'exécution, le modèle, la branche git (si worktree) et l'état en temps réel.
+- **Affichage du modèle en inline** : visualisez en permanence le modèle en cours d'exécution dans la barre supérieure (**Claude Opus 5.5**, Sonnet, Haiku, Gemini Flash / Pro, ou n'importe quel modèle personnalisé via *✏️ Autre modèle…*). Un clic dessus ouvre un sélecteur instantané.
+- **Barre supérieure réactive** : indique l'agent actif, le modèle, la branche git (si worktree), l'état en temps réel, ainsi que le bouton **Redémarrer** toujours accessible.
 
 ---
 
@@ -109,7 +109,7 @@ sm install    # Configure le démarrage auto et ouvre l'interface
 - 🟠 **Orange (pulsant)** : l'agent réfléchit, génère du code ou exécute un outil.
 - 🔴 **Rouge (alerte)** : l'agent attend une validation ou une réponse de votre part.
 - 🟢 **Vert** : l'agent est prêt.
-- ⚪ **Cercle** : session arrêtée. Cliquez sur « Reprendre » pour reprendre la conversation.
+- ⚪ **Cercle** : session arrêtée. Cliquez sur **Redémarrer** pour relancer ou reprendre la conversation.
 
 ### Bascule d'agent transparente (Handoff Claude ⇄ Antigravity)
 - Cliquez sur le bouton **🔀 Basculer vers...** (ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd>) pour passer instantanément d'un agent à l'autre dans la même session.
@@ -121,11 +121,11 @@ sm install    # Configure le démarrage auto et ouvre l'interface
 
 ## 5. Quotas & Consommation en temps réel
 
-Sessions Manager surveille vos quotas et consommations sur les deux fournisseurs :
-- **Bouton 📊 Quota** (barre d'en-tête) : ouvre une modale détaillée avec les jauges d'utilisation, le pourcentage restant et la date de réinitialisation. Le quota de l'agent actif est mis en avant en premier.
+Sessions Manager surveille vos quotas et consommations avec affichage exclusif de l'agent actif :
+- **Bouton 📊 Quota** (barre d'en-tête) : ouvre une modale détaillée avec les jauges d'utilisation, le pourcentage restant et la date de réinitialisation pour l'agent de la session active (Claude Code ou Antigravity).
 - **Onglet Consommation** (panneau latéral droit) :
-  - Affiche automatiquement en tête les **Quotas Claude Code** ou les **Quotas Antigravity** selon l'agent de la session sélectionnée.
-  - Boutons de rafraîchissement individuels `⟳` pour forcer l'actualisation sans attendre le cache.
+  - Affiche exclusivement les **Quotas Claude Code** ou les **Quotas Antigravity** correspondant à l'agent de la session en cours.
+  - Bouton de rafraîchissement dédié `⟳` pour forcer l'actualisation sans attendre le cache.
   - Statistiques de tokens d'entrée, de sortie et coût estimé par modèle et par jour.
 
 ---

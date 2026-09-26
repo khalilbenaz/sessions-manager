@@ -74,7 +74,7 @@ footer { border-top: 1px solid var(--line); padding: 26px 20px 40px; color: var(
   </aside>
   <main>
     <h1>Guide de AGY Sessions</h1>
-    <p class="lead">Tout ce que fait l'application et comment s'en servir — version 1.0.2. Le même guide est dans le <a href="https://github.com/khalilbenaz/agy-sessions-manager#readme">README</a>.</p>
+    <p class="lead">Tout ce que fait l'application et comment s'en servir — version 1.0.3. Le même guide est dans le <a href="https://github.com/khalilbenaz/agy-sessions-manager#readme">README</a>.</p>
 <section id="g1-installation"><h2><span class="num">1</span>Installation</h2>
 <p>Prérequis : au moins l'un des deux agents installé :</p>
 <ul><li><b>Claude Code CLI</b> (<code>claude</code>) : <code>npm install -g @anthropic-ai/claude-code</code> (ou via <code>sm install-claude</code>)</li><li><b>Antigravity CLI</b> (<code>agy</code>) : installé via <code>curl -fsSL https://antigravity.google/cli/install.sh | bash</code></li></ul>
@@ -97,8 +97,8 @@ sm install    # Configure le démarrage auto et ouvre l'interface</pre>
 </section>
 <section id="g3-lecran-principal-la-barre-de-session"><h2><span class="num">3</span>L'écran principal &amp; la barre de session</h2>
 <pre class="schema">┌─ barre latérale ────────┬─ barre de la session active ────────────────────────────────────────────────────────┐
-│ + Nouvelle              │ ● 🧡 Claude  Projet Web ✎  [gemini-3.1-pro ▾]  ⎇ main  dossier   📊 Quota   ± Modifs │
-│ Rechercher…   Ctrl+K    │                                                      🔀 Basculer   Reprendre  ⋯  ✕ │
+│ + Nouvelle              │ ● 🧡 Claude  Projet Web ✎  [Claude Opus 5.5 ▾]  ⎇ main  dossier   📊 Quota   ± Modifs│
+│ Rechercher…   Ctrl+K    │                                                     🔀 Basculer  Redémarrer  ⋯  ✕│
 │ [Tous] [🧡 Claude] [🔷] │├──────────────────────────────────────────────────────────────┬─────────────────────┤
 │ ─ ÉPINGLÉES ─       1   │                                                              │ panneau latéral     │
 │ ● 🧡 Backend API        │   terminal de la session (ou 2 / 4 panneaux)                 │  Modifications      │
@@ -107,19 +107,19 @@ sm install    # Configure le démarrage auto et ouvre l'interface</pre>
 │ ● 🧡 Tests Playwright   │                                                              │                     │
 │ Historique   ⚙   ⇤      │                                                              │                     │
 └─────────────────────────┴──────────────────────────────────────────────────────────────┴─────────────────────┘</pre>
-<ul><li><b>Filtres de la barre latérale</b> : filtrez vos sessions actives d'un clic avec <code>[ Tous ]</code>, <code>[ 🧡 Claude ]</code> ou <code>[ 🔷 AGY ]</code>.</li><li><b>Badges d'agent</b> : chaque élément affiche un badge visuel net pour ne jamais confondre vos agents.</li><li><b>Affichage du modèle en inline</b> : visualisez en permanence le modèle en cours d'exécution dans la barre supérieure. Un clic dessus (ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>) ouvre un menu pour changer de modèle et de niveau d'effort à la volée.</li><li><b>Barre supérieure</b> : indique l'agent en cours d'exécution, le modèle, la branche git (si worktree) et l'état en temps réel.</li></ul>
+<ul><li><b>Filtres de la barre latérale</b> : filtrez vos sessions actives d'un clic avec <code>[ Tous ]</code>, <code>[ 🧡 Claude ]</code> ou <code>[ 🔷 AGY ]</code>.</li><li><b>Badges d'agent</b> : chaque élément affiche un badge visuel net pour ne jamais confondre vos agents.</li><li><b>Affichage du modèle en inline</b> : visualisez en permanence le modèle en cours d'exécution dans la barre supérieure (<b>Claude Opus 5.5</b>, Sonnet, Haiku, Gemini Flash / Pro, ou n'importe quel modèle personnalisé via <i>✏️ Autre modèle…</i>). Un clic dessus ouvre un sélecteur instantané.</li><li><b>Barre supérieure réactive</b> : indique l'agent actif, le modèle, la branche git (si worktree), l'état en temps réel, ainsi que le bouton <b>Redémarrer</b> toujours accessible.</li></ul>
 </section>
 <section id="g4-gestion-des-sessions-bascule-dagent-handoff"><h2><span class="num">4</span>Gestion des sessions &amp; bascule d'agent (Handoff)</h2>
 <h3>États en temps réel</h3>
-<ul><li>🟠 <b>Orange (pulsant)</b> : l'agent réfléchit, génère du code ou exécute un outil.</li><li>🔴 <b>Rouge (alerte)</b> : l'agent attend une validation ou une réponse de votre part.</li><li>🟢 <b>Vert</b> : l'agent est prêt.</li><li>⚪ <b>Cercle</b> : session arrêtée. Cliquez sur « Reprendre » pour reprendre la conversation.</li></ul>
+<ul><li>🟠 <b>Orange (pulsant)</b> : l'agent réfléchit, génère du code ou exécute un outil.</li><li>🔴 <b>Rouge (alerte)</b> : l'agent attend une validation ou une réponse de votre part.</li><li>🟢 <b>Vert</b> : l'agent est prêt.</li><li>⚪ <b>Cercle</b> : session arrêtée. Cliquez sur <b>Redémarrer</b> pour relancer ou reprendre la conversation.</li></ul>
 <h3>Bascule d'agent transparente (Handoff Claude ⇄ Antigravity)</h3>
 <ul><li>Cliquez sur le bouton <b>🔀 Basculer vers...</b> (ou <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd>) pour passer instantanément d'un agent à l'autre dans la même session.</li><li><b>Transmission intelligente du contexte</b> : Sessions Manager génère automatiquement un briefing Markdown complet résumant les tours précédents, les décisions prises et les fichiers touchés.</li><li><b>Reprise sans collision</b> : si vous revenez à un agent déjà utilisé dans la session, sa conversation historique est reprise proprement et complétée avec le briefing du tour intermédiaire.</li><li><b>Isolation étanche</b> : les processus PTY et les hooks universels reçoivent la variable <code>SM_AGENT</code> pour garantir qu'aucun identifiant de conversation n'est croisé ou corrompu.</li></ul>
 </section>
 <section id="g5-quotas-consommation-en-temps-reel"><h2><span class="num">5</span>Quotas &amp; Consommation en temps réel</h2>
-<p>Sessions Manager surveille vos quotas et consommations sur les deux fournisseurs :</p>
-<ul><li><b>Bouton 📊 Quota</b> (barre d'en-tête) : ouvre une modale détaillée avec les jauges d'utilisation, le pourcentage restant et la date de réinitialisation. Le quota de l'agent actif est mis en avant en premier.</li><li><b>Onglet Consommation</b> (panneau latéral droit) :</li></ul>
-<p>  - Affiche automatiquement en tête les <b>Quotas Claude Code</b> ou les <b>Quotas Antigravity</b> selon l'agent de la session sélectionnée.</p>
-<p>  - Boutons de rafraîchissement individuels <code>⟳</code> pour forcer l'actualisation sans attendre le cache.</p>
+<p>Sessions Manager surveille vos quotas et consommations avec affichage exclusif de l'agent actif :</p>
+<ul><li><b>Bouton 📊 Quota</b> (barre d'en-tête) : ouvre une modale détaillée avec les jauges d'utilisation, le pourcentage restant et la date de réinitialisation pour l'agent de la session active (Claude Code ou Antigravity).</li><li><b>Onglet Consommation</b> (panneau latéral droit) :</li></ul>
+<p>  - Affiche exclusivement les <b>Quotas Claude Code</b> ou les <b>Quotas Antigravity</b> correspondant à l'agent de la session en cours.</p>
+<p>  - Bouton de rafraîchissement dédié <code>⟳</code> pour forcer l'actualisation sans attendre le cache.</p>
 <p>  - Statistiques de tokens d'entrée, de sortie et coût estimé par modèle et par jour.</p>
 </section>
 <section id="g6-vue-partagee-split-view-1-2-4-panneaux"><h2><span class="num">6</span>Vue partagée (Split View 1, 2, 4 panneaux)</h2>
