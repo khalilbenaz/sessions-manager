@@ -653,6 +653,11 @@ async function switchAgent(id, model) {
     const r = await api('POST', `/api/sessions/${id}/switch`, body);
     sessions.set(id, { ...sessions.get(id), ...(r && r.session), switching: false });
     render(); if (id === active) renderBar();
+    const qBox = $('#quotaContent');
+    if (qBox) { delete qBox.dataset.loaded; delete qBox.dataset.mainAgent; }
+    if (id === active) {
+      window.dispatchEvent(new CustomEvent('csm:active', { detail: { id: active } }));
+    }
     const st = r && r.stats;
     toast(st
       ? `${AGENT_LABEL[prev]} → ${AGENT_LABEL[to]} · ${st.turns} tours transmis (${Math.round(st.chars / 100) / 10}k car.)`
@@ -797,11 +802,15 @@ async function openQuotaDialog(force = false) {
   const dlg = $('#dlgQuota');
   const box = $('#quotaContent');
   dlg.showModal();
-  if (!force && box.dataset.loaded) return;
   // Le quota affiché suit l'agent de la session active, l'autre agent reste visible en dessous.
   const cur = sessions.get(active);
   const main = cur && cur.agent === 'claude' ? 'claude' : 'agy';
   const other = main === 'agy' ? 'claude' : 'agy';
+  if (box.dataset.mainAgent !== main) {
+    delete box.dataset.loaded;
+  }
+  if (!force && box.dataset.loaded) return;
+  box.dataset.mainAgent = main;
   const title = $('#quotaTitle');
   if (title) title.textContent = main === 'agy' ? '🔷 Quotas & Limites Antigravity' : '🧡 Quotas & Limites Claude Code';
   box.innerHTML = `<p class="hint">${t('Chargement des quotas…')}</p>`;

@@ -27,9 +27,11 @@ function send() {
 
   const toolName = data.toolCall?.name || data.tool_name || '';
   const conversationId = data.conversationId || data.session_id || '';
+  const agent = process.env.SM_AGENT || (rawEvent?.startsWith('Pre') || rawEvent === 'Stop' ? '' : 'claude');
 
   const body = JSON.stringify({
     id: SM_ID || conversationId,
+    agent,
     sm: SM_ID || conversationId,
     asm: SM_ID || conversationId,
     csm: SM_ID || conversationId,

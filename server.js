@@ -300,6 +300,7 @@ function spawnSession(s, { resume, fork } = {}) {
   const env = {
     ...process.env,
     SM_ID: s.id,
+    SM_AGENT: isAgy ? 'agy' : 'claude',
     SM_PORT: String(PORT),
     SM_TOKEN: TOKEN,
     ASM_ID: s.id,
@@ -413,9 +414,13 @@ function fitModel(agent, model) {
 
 function switchAgent(s, to, override = {}) {
   const from = s.agent === 'agy' ? 'agy' : 'claude';
-  const srcId = s.conversationId || s.claudeSessionId || null;
+  const srcId = (from === 'agy' ? s.conversationId : s.claudeSessionId) || (s.agentIds || {})[from] || null;
   if (srcId) s.agentIds = { ...(s.agentIds || {}), [from]: srcId };
   s.agentCfg = { ...(s.agentCfg || {}), [from]: { model: s.model || '', effort: s.effort || '', mode: s.mode || '' } };
+
+  // Arrêter l'ancien agent avant de modifier s.agent pour éviter que ses hooks de fin ne polluent l'agent cible
+  killSession(s);
+  s.pty = null;
 
   // --- Briefing de contexte
   const file = handoff.transcriptFile(from, srcId);
@@ -435,7 +440,12 @@ function switchAgent(s, to, override = {}) {
   }
 
   // --- Configuration propre à l'agent cible
-  const targetId = (s.agentIds || {})[to] || null;
+  let targetId = (s.agentIds || {})[to] || null;
+  if (targetId && !handoff.transcriptFile(to, targetId)) {
+    // Si l'ID enregistré n'existe pas dans les transcripts de l'agent cible, repartir à neuf avec le briefing
+    targetId = null;
+    if (s.agentIds) delete s.agentIds[to];
+  }
   const cfg = s.agentCfg?.[to] || agentDefaults(to);
   // Un modèle peut être imposé au moment de la bascule (quota épuisé sur un fournisseur).
   if (override.model !== undefined) {
@@ -450,7 +460,6 @@ function switchAgent(s, to, override = {}) {
   s.claudeSessionId = to === 'claude' ? targetId : null;
   s.initialPrompt = brief || '';
 
-  killSession(s);
   s.buf = '';
   broadcast({ t: 'clear', id: s.id });
   s.buf += `\x1b[90m[sm] Bascule ${handoff.AGENT_LABEL[from]} → ${handoff.AGENT_LABEL[to]}`
@@ -785,7 +794,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { path: file });
     }
     if (p === '/api/hook' && req.method === 'POST') {
-      const { id, sm, asm, csm, event, data } = await readBody(req);
+      const { id, sm, asm, csm, event, agent: hookAgent, data } = await readBody(req);
       const targetId = id || sm || asm || csm;
       let s = sessions.get(targetId);
       const convId = data && (data.conversationId || data.session_id);
@@ -797,12 +806,13 @@ const server = http.createServer(async (req, res) => {
       }
       if (!s) return json(res, 404, {});
       if (convId) {
-        if (s.agent === 'agy' && s.conversationId !== convId) {
-          s.conversationId = convId;
+        const emittingAgent = hookAgent || (s.agent === 'agy' ? 'agy' : 'claude');
+        if (emittingAgent === 'agy') {
+          if (s.agent === 'agy') s.conversationId = convId;
           s.agentIds = { ...(s.agentIds || {}), agy: convId };
           persist();
-        } else if (s.agent !== 'agy' && s.claudeSessionId !== convId) {
-          s.claudeSessionId = convId;
+        } else if (emittingAgent === 'claude') {
+          if (s.agent === 'claude') s.claudeSessionId = convId;
           s.agentIds = { ...(s.agentIds || {}), claude: convId };
           persist();
         }

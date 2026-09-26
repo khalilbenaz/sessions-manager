@@ -254,3 +254,16 @@ test('mise à jour du modèle d’une session', async () => {
   const cur = await session(s.id);
   assert.equal(cur.model, 'gemini-3.1-pro-high');
 });
+
+test('quotas : exposition de agyQuota et claudeQuota dans /api/usage', async () => {
+  const usage = await api('GET', '/api/usage');
+  assert.ok('agyQuota' in usage, 'agyQuota présent dans /api/usage');
+  assert.ok('claudeQuota' in usage, 'claudeQuota présent dans /api/usage');
+
+  const agyQuotaRes = await api('GET', '/api/agents/agy/quota');
+  assert.ok(agyQuotaRes !== undefined);
+
+  const claudeQuotaRes = await api('GET', '/api/agents/claude/quota');
+  assert.ok(claudeQuotaRes !== undefined);
+});
+
